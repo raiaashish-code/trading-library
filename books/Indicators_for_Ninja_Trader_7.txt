@@ -1,0 +1,6 @@
+How to import and use the PivotBoss Masters Investor/RT chart definitions
+Follow these instructions to import these indicators into NT7:
+1. Download and unzip the attached zip file
+2. Copy the .CS files and past them into the following directory: My Documents\NinjaTrader7\bin\Custom\Indicator
+3. Once complete, got to Tools > Edit NinjaScript > Indicator > select any indicator > OK > once the NinjaScript Editor window opens press F5 on your keyboard to compile your NinjaScript files
+4. Add PB indicators from any Indicator menu
