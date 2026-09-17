@@ -1,0 +1,98 @@
+//@version=5
+//Updated on 22-04-2022
+indicator(title="NitinVaid BankNifty", shorttitle='NitinVaid BankNifty', overlay=true)
+var rowsToShow = input.int(title='No. of Top Participants to show', defval=14, minval=1, maxval=15)
+tablePosition = input.string(title='Table Position', defval=position.top_right, options=[position.bottom_right, position.bottom_left, position.bottom_center, position.top_right, position.top_left, position.top_center])
+indexChoice = 'BANKNIFTY'
+indexChoice2 = 'NIFTY'
+[indexLTP, prevIndexLTP] = request.security(indexChoice, "D", [close, close[1]])
+[indexLTP2, prevIndexLTP2] = request.security(indexChoice2, "D", [close, close[1]])
+indexChange = indexLTP - prevIndexLTP
+indexChange2 = indexLTP2 - prevIndexLTP2
+indexPercentChange = indexChange / prevIndexLTP * 100
+indexPercentChange2 = indexChange2 / prevIndexLTP2 * 100
+pointChange = indexLTP / 100
+pointChange2 = indexLTP2 / 100
+var indicatorTable = table.new(position=tablePosition, columns=20, rows=20, frame_color=#ffffff, frame_width=2, border_width=1, border_color=#000000)
+
+convertToString(number) =>
+    str.tostring(number, '0.00')
+
+table.cell(table_id=indicatorTable, column=0, row=0, text='Symbol', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=1, row=0, text='LTP', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=2, row=0, text='Chg', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=3, row=0, text='Chg%', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=4, row=0, text='Participation', bgcolor=#000000, text_color=#ffffff)
+
+
+table.cell(table_id=indicatorTable, column=0, row=1, text=indexChoice, bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=1, row=1, text=convertToString(indexLTP), bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=2, row=1, text=convertToString(indexChange), bgcolor=indexChange > 0 ? #6bff71 : #ff0707, text_color=#000000)
+table.cell(table_id=indicatorTable, column=3, row=1, text=convertToString(indexPercentChange), bgcolor=indexPercentChange > 0 ? #6bff71 : #ff0707, text_color=#000000)
+table.cell(table_id=indicatorTable, column=4, row=1, text='-', bgcolor=#000000, text_color=#000000)
+
+//Nifty 
+table.cell(table_id=indicatorTable, column=6, row=0, text='Symbol', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=7, row=0, text='LTP', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=8, row=0, text='Chg', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=9, row=0, text='Chg%', bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=10, row=0, text='Participation', bgcolor=#000000, text_color=#ffffff)
+
+table.cell(table_id=indicatorTable, column=6, row=1, text=indexChoice2, bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=7, row=1, text=convertToString(indexLTP2), bgcolor=#000000, text_color=#ffffff)
+table.cell(table_id=indicatorTable, column=8, row=1, text=convertToString(indexChange2), bgcolor=indexChange2 > 0 ? #6bff71 : #ff0707, text_color=#000000)
+table.cell(table_id=indicatorTable, column=9, row=1, text=convertToString(indexPercentChange2), bgcolor=indexPercentChange > 0 ? #6bff71 : #ff0707, text_color=#000000)
+table.cell(table_id=indicatorTable, column=10, row=1, text='-', bgcolor=#000000, text_color=#000000)
+
+data(i, sym, weightage) =>
+    participationValue = 0.0
+    changeValue = 0.0
+    changePer = 0.0
+    [currentClose, prevClose] = request.security(sym, "D", [close, close[1]])
+    changeValue := currentClose - prevClose
+    changePer := changeValue / prevClose
+    participationValue := indexLTP * weightage * changePer
+    bgcol = participationValue > 0 ? #6bff71 : #ff0707
+    if i <= rowsToShow
+        table.cell(table_id=indicatorTable, column=0, row=i + 1, text=sym, text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+        table.cell(table_id=indicatorTable, column=1, row=i + 1, text=convertToString(currentClose), text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+        table.cell(table_id=indicatorTable, column=2, row=i + 1, text=convertToString(changeValue), text_halign=text.align_left, bgcolor=bgcol, text_color=#000000)
+        table.cell(table_id=indicatorTable, column=3, row=i + 1, text=convertToString(changePer * 100), text_halign=text.align_left, bgcolor=bgcol, text_color=#000000)
+        table.cell(table_id=indicatorTable, column=4, row=i + 1, text=convertToString(participationValue/100), text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+
+
+
+data(1, 'HDFCBANK', input(defval=28.49, title="HDFCBANK"))
+data(2, 'ICICIBANK', input(defval=22.45, title="ICICIBANK"))
+data(5, 'AXISBANK', input(defval=11.59, title="AXISBANK"))
+data(4, 'SBIN', input(defval=11.12, title="SBIN"))
+data(3, 'KOTAKBANK', input(defval=11.39, title="KOTAK"))
+data(6, 'INDUSINDBK', input(defval=5.29, title="INDUSIND"))
+data(7, 'AUBANK', input(defval=2.39, title="AUBANK"))
+
+data2(i, sym, weightage2) =>
+    participationValue2 = 0.0
+    changeValue2 = 0.0
+    changePer2 = 0.0
+    [currentClose2, prevClose2] = request.security(sym, "D", [close, close[1]])
+    changeValue2 := currentClose2 - prevClose2
+    changePer2 := changeValue2 / prevClose2
+    participationValue2 := indexLTP2 * weightage2 * changePer2
+    bgcol = participationValue2 > 0 ? #6bff71 : #ff0707
+    if i <= rowsToShow
+        table.cell(table_id=indicatorTable, column=6, row=i + 1, text=sym, text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+        table.cell(table_id=indicatorTable, column=7, row=i + 1, text=convertToString(currentClose2), text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+        table.cell(table_id=indicatorTable, column=8, row=i + 1, text=convertToString(changeValue2), text_halign=text.align_left, bgcolor=bgcol, text_color=#000000)
+        table.cell(table_id=indicatorTable, column=9, row=i + 1, text=convertToString(changePer2 * 100), text_halign=text.align_left, bgcolor=bgcol, text_color=#000000)
+        table.cell(table_id=indicatorTable, column=10, row=i + 1, text=convertToString(participationValue2/100), text_halign=text.align_left, bgcolor=#000000, text_color=#ffffff)
+        
+data2(5, 'RELIANCE', input(defval=11.89, title="RELIANCE"))
+data2(7, 'INFY', input(defval=9.13, title="INFY"))
+data2(1, 'HDFCBANK', input(defval=8.43, title="HDFCBANK"))
+data2(2, 'ICICIBANK', input(defval=6.64, title="ICICIBANK"))
+data2(4, 'HDFC', input(defval=5.66, title="HDFC"))
+data2(6, 'TCS', input(defval=5.07, title="TCS"))
+data2(3, 'KOTAKBANK', input(defval=3.37, title="KOTAK"))
+
+
+
