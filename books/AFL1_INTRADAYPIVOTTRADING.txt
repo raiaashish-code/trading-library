@@ -1,0 +1,3217 @@
+// CHART
+_SECTION_BEGIN("1_CHART");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - " +FullName() + " - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " + WriteVal( V, 1.0 ) +" ", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+SetBarsRequired(1000);
+stylecndl=ParamList("Bar or Candle chart?","Candle|Bar");
+if (stylecndl=="Candle")stylec=stylecandle;
+else stylec=styleBar;
+upbarcolorPRICE = colorYellow;  COLORRGB(20,100,880); //colorYellow;
+dnbarcolorPRICE = COLORRGB(500,40,80);
+barcolorPRICE = IIf(Close > Open, UpBarColorPRICE, DnBarColorPRICE);
+Plot(C,"close",barcolorPRICE,stylec|stylethick);
+//Plot(EMA(C,200),"ema200",colorYellow,styleDots);
+_SECTION_END();
+
+
+// DAILY CHART OVERLAY
+
+_SECTION_BEGIN("2_DAILYCHART_OVERLAY");
+wo = TimeFrameGetPrice( "O", inDaily, 0, expandPoint ); 
+wh = TimeFrameGetPrice( "H", inDaily, 0, expandPoint ); 
+wl = TimeFrameGetPrice( "L", inDaily, 0, expandPoint ); 
+wc = TimeFrameGetPrice( "C", inDaily, 0, expandPoint ); 
+ShowDailyChart=ParamList("Show Daily Chart ","No|Yes");
+if (showDailyChart == "Yes")
+{
+PlotOHLC( wo, wh, wl, wc, "Daily Close", colorWhite, styleCandle ); 
+}
+_SECTION_END();
+
+
+// VOLUME
+_SECTION_BEGIN("3_Volume");
+Showvol=ParamList("Show Volume ","No|Yes");
+if (showvol == "Yes")
+{
+upbarcolorvol = colorAQUA;
+dnbarcolorvol = colorBROWN;
+barcolorVOL = IIf(Close > Open, UpBarColorVOL, DnBarColorVOL);
+Plot( Volume, _DEFAULT_NAME(), barcolorvol, styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleSwingDots | styleNoLabel  ), 2 );
+}
+_SECTION_END();
+
+
+// EMA
+_SECTION_BEGIN("4_EMA");
+ShowEMA1=ParamList("Show 200 period EMA ","No|Yes");
+if (showEMA1 == "Yes")
+{
+upbarcolorvol = colorAQUA;
+dnbarcolorvol = colorBROWN;
+barcolorVOL = IIf(Close > EMA(C,200), UpBarColorVOL, DnBarColorVOL);
+Plot( EMA(C,200), _DEFAULT_NAME(), barcolorvol,styleLine|styleThick);
+}
+
+ShowEMA2=ParamList("Show 50 EMA ","No|Yes");
+if (showEMA2 == "Yes")
+{
+upbarcolorvol = colorAQUA;
+dnbarcolorvol = colorBROWN;
+barcolorVOL = IIf(Close > EMA(C,50), UpBarColorVOL, DnBarColorVOL);
+Plot( EMA(C,50), _DEFAULT_NAME(), barcolorvol,styleDots|styleThick);
+}
+
+ShowHTFEMA = ParamList("Show 20 day EMA", "No|Yes");
+mad_20 = EMA( C, 75*20 ); 
+if(showhtfema == "YES")
+{
+Plot( mad_20, "daily 20 ema in 5 min charts", colorWhite,styleDashed|styleThick); 
+}
+_SECTION_END();
+
+
+//PIVOT EMAS
+_SECTION_BEGIN("5_PEMA3");
+ShowEMA=ParamList("Show PEMA3 ","No|Yes");
+if (showEMA == "Yes")
+{
+
+PEMA_L = EMA((H+L+C)/3,21);
+PEMA_M = EMA((H+L+C)/3,34);
+PEMA_H = EMA((H+L+C)/3,89);
+
+Plot(PEMA_L,"PEMA_L",colorWhite,styleLine);
+Plot(PEMA_M,"PEMA_M",colorWHITE,styleDashed);
+Plot(PEMA_H,"PEMA_H",colorWHITE,styleDots);
+first = Max(Max(pema_l,pema_m),pema_h);
+last = Min(Min(pema_l,pema_m),pema_h);
+PEMACOLOR = IIf(PEMA_L > PEMA_H,colorLightBlue,IIf(PEMA_L > PEMA_M,colorLime,colorPaleBlue));
+PlotOHLC(last, first, last, first, "", PEMACOLOR, styleCloud|styleNoLabel, Null, Null, 0, -50, 1);
+
+
+}
+_SECTION_END();
+
+
+// 	BACKGROUND NAME
+
+_SECTION_BEGIN("6_Name");
+GfxSetOverlayMode(1);
+GfxSelectFont("Tahoma", Status("pxheight")/18);
+GfxSetTextAlign( 6 );// center alignment
+GfxSetTextColor( ColorHSB( 30, 40, 90 ) );
+GfxSetBkMode(0); // transparent
+GfxTextOut( Name(), Status("pxwidth")/2, Status("pxheight")/18 );
+GfxSelectFont("Tahoma", Status("pxheight")/50 );
+GfxSelectFont("Tahoma", Status("pxheight")/50 );
+GfxSelectFont("Tahoma", Status("pxheight")/50 );
+GfxTextOut( "Manoj (Twitter:@scorpiomanojFRM); INTRADAY TRADING USING PIVOTS", Status("pxwidth")/2, Status("pxheight")/3 );
+_SECTION_END();
+
+//STREND
+
+_SECTION_BEGIN("7_STREND");
+//FACTOR = Optimize("FACT",2.2,1,3,0.1);
+//PD = Optimize("PD",20,10,20,2);
+Factor=Param("Factor",2.2,1,10,0.1);
+Pd=Param("ATR Periods",20,1,100,1);
+Up=(H+L)/2+(Factor*ATR(PD));
+Dn=(H+L)/2-(Factor*ATR(PD));
+iATR=ATR(PD);
+TrendUp=TrendDown=Null;
+trend[0]=1;
+changeOfTrend=0;
+flag=flagh=0;
+
+for (i = 1; i <BarCount-1; i++) {
+TrendUp[i] = Null;
+TrendDown[i] = Null;
+trend[i]=1;
+if (Close[i]>Up[i-1]) {
+trend[i]=1;
+if (trend[i-1] == -1) changeOfTrend = 1;
+}
+else if (Close[i]<Dn[i-1]) {
+trend[i]=-1;
+if (trend[i-1] == 1) changeOfTrend = 1;
+}
+else if (trend[i-1]==1) {
+trend[i]=1;
+changeOfTrend = 0;
+}
+else if (trend[i-1]==-1) {
+trend[i]=-1;
+changeOfTrend = 0;
+}
+if (trend[i]<0 && trend[i-1]>0) {
+flag=1;
+}
+else {
+flag=0;
+}
+if (trend[i]>0 && trend[i-1]<0) {
+flagh=1;
+}
+else {
+flagh=0;
+}
+if (trend[i]>0 && Dn[i]<Dn[i-1]){
+Dn[i]=Dn[i-1];
+}
+if (trend[i]<0 && Up[i]>Up[i-1])
+{ Up[i]=Up[i-1];
+}
+if (flag==1)
+{ Up[i]=(H[i]+L[i])/2+(Factor*iATR[i]);;
+}
+if (flagh==1)
+{ Dn[i]=(H[i]+L[i])/2-(Factor*iATR[i]);;
+}
+if (trend[i]==1) {
+TrendUp[i]=Dn[i];
+if (changeOfTrend == 1) {
+TrendUp[i-1] = TrendDown[i-1];
+changeOfTrend = 0;
+}
+}
+else if (trend[i]==-1) {
+TrendDown[i]=Up[i];
+if (changeOfTrend == 1) {
+TrendDown[i-1] = TrendUp[i-1];
+changeOfTrend = 0;
+}
+}
+}
+
+ShowSTREND = ParamList("Show SUPER TREND", "No|Yes");
+if(showSTREND == "YES")
+{
+Plot(TrendUp,"Trend",colorWhite|styleThick);
+Plot(TrendDown,"Down",colorBlue | styleThick);
+
+}
+
+_SECTION_END();
+
+
+//prev PERIOD levels
+_SECTION_BEGIN("8_PREV PERIOD RANGE");
+TODAY = LastValue(Day());
+PPRICE = TimeFrameGetPrice("C",inDaily,-1) ;
+PCPRICE = (C-PPRICE)*100/PPRICE;
+PWHIGH = TimeFrameGetPrice("H", inWeekly,-1); 
+PWLOW = TimeFrameGetPrice("L",inWeekly,-1);
+PMHIGH = TimeFrameGetPrice("H",inMonthly,-1);
+PMLOW = TimeFrameGetPrice("L",inMonthly,-1);
+
+BPPWHIGH = LastValue(PWHIGH,1); 
+BPPWLOW = LastValue(PWLOW,1);
+BPPMHIGH = LastValue(PMHIGH,1);
+BPPMLOW = LastValue(PMLOW,1);
+
+
+CWHIGH = TimeFrameGetPrice("H", inWeekly,0);
+CWLOW = TimeFrameGetPrice("L",inWeekly,0);
+CMHIGH = TimeFrameGetPrice("H",inMonthly,0);
+CMLOW = TimeFrameGetPrice("L",inMonthly,0);
+
+
+BPCWHIGH = LastValue(CWHIGH,1); 
+BPCWLOW = LastValue(CWLOW,1);
+BPCMHIGH = LastValue(CMHIGH,1);
+BPCMLOW = LastValue(CMLOW,1);
+
+numbars = LastValue(Cum(Status("barvisible")));
+fraction= IIf(StrRight(Name(),3) == "", 3.2, 3.2);
+hts = 33.5;
+
+PLOTPWH = ParamList("PLOT PWH", "YES|NO");
+if (PLOTPWH == "YES")
+{
+IIf((Today < Day()),Plot(PWHIGH,"WKHIGH",colorYellow,styledots),Plot(PWHIGH,"WKHIGH",colorYellow,styleDots)); 
+}
+
+PLOTPWL = ParamList("PLOT PWL", "YES|NO");
+if (PLOTPWL == "YES")
+{
+IIf((Today < Day()),Plot(PWLOW,"WKLOW",colorYellow,styleDots),Plot(PWLOW,"WKLOW",colorYellow,styleDots)); 
+}
+
+PLOTPMH = ParamList("PLOT PMH", "YES|NO");
+if (PLOTPMH == "YES")
+{
+IIf((Today < Day()),Plot(PMHIGH,"MNTHHIGH",colorGreen,styledots),Plot(PMHIGH,"MNTHHIGH",colorGreen,styleDots)); 
+}
+
+PLOTPML = ParamList("PLOT PML", "YES|NO");
+if (PLOTPML == "YES")
+{
+IIf((Today < Day()),Plot(PMLOW,"MNTHLOW",colorGreen,styleDots),Plot(PMLOW,"MNTHLOW",colorGreen,styleDots)); 
+}
+
+
+
+PLOTCWH = ParamList("PLOT CWH", "YES|NO");
+if (PLOTCWH == "YES")
+{
+IIf((Today < Day()),Plot(CWHIGH,"C_WKHIGH",colorLightBlue,styleDots),Plot(CWHIGH,"C_WKHIGH",colorLightBlue,styleDots)); 
+}
+
+PLOTCWL = ParamList("PLOT CWL", "YES|NO");
+if (PLOTCWL == "YES")
+{
+IIf((Today < Day()),Plot(CWLOW,"C_WKLOW",colorLightBlue,styleDots),Plot(CWLOW,"C_WKLOW",colorLightBlue,styleDots)); 
+}
+
+PLOTCMH = ParamList("PLOT CMH", "YES|NO");
+if (PLOTCMH == "YES")
+{
+IIf((Today < Day()),Plot(CMHIGH,"C_MNTHHIGH",colorLightGrey,styleDots),Plot(CMHIGH,"C_MNTHHIGH",colorLightGrey,styleDots)); 
+}
+
+PLOTCML = ParamList("PLOT CML", "YES|NO");
+if (PLOTCML == "YES")
+{
+IIf((Today < Day()),Plot(CMLOW,"C_MNTHLOW",colorLightGrey,styleDots),Plot(CMLOW,"C_MNTHLOW",colorLightGrey,styleDots)); 
+}
+
+
+PLEVELTEXT = ParamToggle("Prev_Curr M_W H_L TEXT","Show|Hide",1);
+
+if(pleveltext==1){
+
+
+PlotText(" PWH = " + WriteVal(PWHIGH,fraction), LastValue(BarIndex())-(numbars/Hts), bpPWHIGH +0.05, colorBlue);
+PlotText(" PWL = " + WriteVal(PWLOW,fraction), LastValue(BarIndex())-(numbars/Hts), BPPWLOW +0.05, colorGreen);
+PlotText(" PMH = " + WriteVal(PMHIGH,fraction), LastValue(BarIndex())-(numbars/Hts), BPPMHIGH +0.05, colorRed);
+PlotText(" PML = " + WriteVal(PMLOW,fraction), LastValue(BarIndex())-(numbars/Hts), BPPMLOW +0.05, colorGreen);
+PlotText(" CWH = " + WriteVal(CWHIGH,fraction), LastValue(BarIndex())-(numbars/Hts), BPCWHIGH +0.05, colorRed);
+PlotText(" CWL = " + WriteVal(CWLOW,fraction), LastValue(BarIndex())-(numbars/Hts), BPCWLOW +0.05, colorGreen);
+PlotText(" CMH = " + WriteVal(CMHIGH,fraction), LastValue(BarIndex())-(numbars/Hts), BPCMHIGH +0.05, colorRed);
+PlotText(" CML = " + WriteVal(CMLOW,fraction), LastValue(BarIndex())-(numbars/Hts), BPCMLOW +0.05, colorGreen);
+}
+_SECTION_END();
+
+
+
+// PIVOT BOSS PIVOTS 
+_SECTION_BEGIN("9_PIVOT BOSS PIVOTS INTRADAY 125MIN");
+IDTIME = 126+63;
+IC1= TimeFrameGetPrice("C", in1Minute*IDTIME, -1);		//				close
+IH1= TimeFrameGetPrice("H", in1Minute*IDTIME, -1);		//				close
+IL1= TimeFrameGetPrice("L", in1Minute*IDTIME, -1);		//				close
+iToday = LastValue(Day());
+IPLOTRNG=ParamList("PLOT PREV 125 MIN H/L ","Yes|No");
+if (IPLOTRNG == "Yes")
+{
+IIf((iToday < Day()),Plot(IH1,"INTRARANGEHIGH",colorAqua,styledots),Plot(IH1,"INTRARANGEHIGH",colorAqua,styleLine)); 
+IIf((iToday < Day()),Plot(IL1,"INTRARANGELOW",colorAqua,styleDots),Plot(IL1,"INTRARANGELOW",colorAqua,styleLine)); 
+}
+//R4 = H1+(H1-L1);
+//R3 = H1+(H1-L1)*0.75;
+//R2 = H1+(H1-L1)*0.50;
+//R1 = H1+(H1-L1)*0.25;
+IPp = ( IH1+ IL1 + IC1 )/3;
+//S1 = L1-(H1-L1)*0.25;
+//S2 = L1-(H1-L1)*0.50;
+//S3 = L1-(H1-L1)*0.75;
+//S4 = L1-(H1-L1);
+IBC = (IH1+IL1)/2;
+ITC = (IPp-IBC)+IPp;
+IPR = IIf(IBC>ITC,(IBC-ITC)*100/ITC,(ITC-IBC)*100/IBC);
+IDPRUP = IIf(IBC>ITC,IBC,ITC);
+IDPRDN = IIf(IBC<ITC,IBC,ITC);
+IR1 = 2 * IPP - IL1;
+IR2 = IPP + (IH1-IL1);
+IR3 = IR1 + (IH1-IL1);
+IR4 = IR3 + (IR2-IR1);
+IR5 = IR4 + (IR3-IR2);
+IR6 = IR5 + (IR4-IR3);
+IR7 = IR6 + (IR5-IR4);
+
+IS1 = 2 * IPP - IH1;
+IS2 = IPP - (IH1-IL1);
+IS3 = IS1 - (IH1-IL1);
+IS4 = IS3 - (IS1-IS2);
+IS5 = IS4 - (IS2-IS3);
+IS6 = IS5 - (IS3-IS4);
+IS7 = IS6 - (IS4-IS5);
+
+
+IBPPP = LastValue(IPP,1);
+IBPDPRUP = LastValue(IDPRUP,1); 
+IBPDPRDN = LastValue(IDPRDN,1);
+IBPR1 = LastValue(Ir1,1);
+IBPR2 = LastValue(Ir2,1);
+IBPR3 = LastValue(Ir3,1);
+IBPR4 = LastValue(Ir4,1);
+IBPR5 = LastValue(Ir5,1);
+IBPR6 = LastValue(Ir6,1);
+IBPR7 = LastValue(Ir7,1);
+
+IBPS1 = LastValue(Is1,1);
+IBPS2 = LastValue(Is2,1);
+IBPS3 = LastValue(Is3,1);
+IBPS4 = LastValue(IS4,1);
+IBPS5 = LastValue(Is5,1);
+IBPS6 = LastValue(IS6,1);
+IBPS7 = LastValue(IS7,1);
+
+ 
+IDayChange1 = DateNum() != Ref( DateNum(), -1 );
+IlastDayBegin1 = LastValue( ValueWhen( IDayChange1, BarIndex() ) );
+Ipvt = ParamToggle("PB INTRADAY 125MIN Pivots","Show|Hide",1);
+IToday = LastValue(Day());
+if(Ipvt==1){
+
+
+Plot(IIf(Itoday == Day(), IR1,Null), "IR1",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR2,Null), "IR2",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR3,Null), "IR3",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR4,Null), "IR4",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR5,Null), "IR5",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR6,Null), "IR6",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IR7,Null), "IR7",colorLightYellow,styleLine+styleNoRescale);
+
+
+
+
+Plot(IIf(Itoday == Day(), ITC,Null), "ITC",colorBrown,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), ITC,Null), "ITC",colorBrown,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), IPp,Null), "IPVT",colorBrown,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), IBC,Null), "IBC",colorBrown,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS1,Null), "IS1",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS2,Null), "IS2",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS3,Null), "IS3",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS4,Null), "IS4",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS5,Null), "IS5",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS6,Null), "IS6",colorLightYellow,styleLine+styleNoRescale);
+Plot(IIf(Itoday == Day(), IS7,Null), "IS7",colorLightYellow,styleLine+styleNoRescale);
+
+}
+
+pvtTEXT = ParamToggle("PB Pivots INTRADAY 125MIN TEXT","Show|Hide",1);
+
+if(pvtTEXT==1){
+PlotText(" IDPRUP = " + WriteVal(IBPDPRUP,fraction), LastValue(BarIndex())+(numbars/Hts), IbpDPRUP +0.05, colorBlue);
+PlotText(" IDPRDN = " + WriteVal(IBPDPRDN,fraction), LastValue(BarIndex())+(numbars/Hts), IBPDPRDN +0.05, colorBlue);
+PlotText(" IPP = " + WriteVal(IBPPP,fraction), LastValue(BarIndex())+(numbars/Hts), IBPPP+0.05, colorBlue);
+PlotText(" IR1 = " + WriteVal(IBPR1,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR1 +0.05, colorRed);
+PlotText(" IR2 = " + WriteVal(IBPR2,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR2 +0.05, colorRed);
+PlotText(" IR3 = " + WriteVal(IBPR3,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR3 +0.05, colorRed);
+PlotText(" IR4 = " + WriteVal(IBPR4,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR4 +0.05, colorRed);
+PlotText(" IR5 = " + WriteVal(IBPR5,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR5 +0.05, colorRed);
+PlotText(" IR6 = " + WriteVal(IBPR6,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR6 +0.05, colorRed);
+PlotText(" IR7 = " + WriteVal(IBPR7,fraction), LastValue(BarIndex())+(numbars/Hts), IBPR7 +0.05, colorRed);
+
+
+PlotText(" IS1 = " + WriteVal(IBPS1,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS1 +0.05, colorGreen);
+PlotText(" IS2 = " + WriteVal(IBPS2,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS2 +0.05, colorGreen);
+PlotText(" IS3 = " + WriteVal(IBPS3,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS3 +0.05, colorGreen);
+PlotText(" IS4 = " + WriteVal(IBPS4,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS4 +0.05, colorGreen);
+PlotText(" IS5 = " + WriteVal(IBPS5,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS5 +0.05, colorGreen);
+PlotText(" IS6 = " + WriteVal(IBPS6,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS6 +0.05, colorGreen);
+PlotText(" IS7 = " + WriteVal(IBPS7,fraction), LastValue(BarIndex())+(numbars/Hts), IBPS7 +0.05, colorGreen);
+
+}
+
+IpvtTCPBCh = ParamToggle("INTRADAY 125 MIN Pivots historical TC/P/BC","Show|Hide",1);
+IpvtTCPBCHSR = ParamToggle("INTRADAY 125 MIN Pivots historical TC/P/BC/S/R","Show|Hide",1);
+if(IpvtTCPBCh==1){
+Plot(Ipp, "IPVT",colorBrown,styleLine+styleNoRescale);
+Plot(Ibc, "IBC",colorBrown,styleLine+styleNoRescale);
+Plot(Itc, "ITC",colorBrown,styleLine+styleNoRescale);
+PlotOHLC(IPp, IIf(IBC>ITC,IBC,ITC), IIf(IBC>ITC,ITC,IBC), IPp, "", colorLightBlue, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+if(IpvtTCPBChSR==1){
+
+Plot(IR4, "IR4",colorWhite,styleDashed+styleNoRescale);
+Plot(IR3, "IR3",colorWhite,styleDashed+styleNoRescale);
+Plot(IR2, "IR2",colorWhite,styleDashed+styleNoRescale);
+Plot(IR1, "IR1",colorWhite,styleDashed+styleNoRescale);
+Plot(Ipp, "IPVT",colorBrown,styleLine+styleNoRescale);
+Plot(Ibc, "IBC",colorBrown,styleLine+styleNoRescale);
+Plot(Itc, "ITC",colorBrown,styleLine+styleNoRescale);
+Plot(IS1, "IS1",colorAqua,styleDashed+styleNoRescale);
+Plot(IS2, "IS2",colorAqua,styleDashed+styleNoRescale);
+Plot(IS3, "IS3",colorAqua,styleDashed+styleNoRescale);
+Plot(IS4, "IS4",colorAqua,styleDashed+styleNoRescale);
+PlotOHLC(IPp, IIf(IBC>ITC,IBC,ITC), IIf(IBC>ITC,ITC,IBC), IPp, "", colorLightBlue, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+IPPNO = Param("INTRADAY PP_EMA_PERIOD",375,0,500,1);
+IMAPP = MA(IPP,IPPNO);
+IPLOTMAPP=ParamList("PLOT INTRADAY MA_PP ","Yes|No");
+if (IPLOTMAPP == "Yes")
+{
+Plot(IMAPP,"INTRADAY MAPP",colorGrey40,styleDots);
+}
+_SECTION_END();
+
+
+// PIVOTBOSS PIVOTS BASED ON CURRENT INTRADAY DAY FOR NEXT INTRA DAY MARKET
+
+_SECTION_BEGIN("10_PIVOT BOSS PIVOTS BASED ON CURRENT INTRADAY FOR NEXT INTRADAY");
+//IDTIME = 131;
+ITC1= TimeFrameGetPrice("IC", in1Minute * IDTIME, 0);		//				close
+ITH1= TimeFrameGetPrice("IH", in1Minute * IDTIME, 0);		//				close
+ITL1= TimeFrameGetPrice("IL", in1Minute * IDTIME, 0);		//				close
+ITO1 = TimeFrameGetPrice("IO", in1Minute * IDTIME,0);
+//TR4 = TH1+(TH1-TL1);
+//TR3 = TH1+(TH1-TL1)*0.75;
+//TR2 = TH1+(TH1-TL1)*0.50;
+//TR1 = TH1+(TH1-TL1)*0.25;
+ITP = ( ITH1+ ITL1 + ITC1 )/3;
+//TS1 = TH1-(TH1-TL1)*0.25;
+//TS2 = TH1-(TH1-TL1)*0.50;
+//TS3 = TH1-(TH1-TL1)*0.75;
+//TS4 = TH1-(TH1-TL1);
+ITBC = (ITH1+ITL1)/2;
+ITTC = (ITP-ITBC)+ITP;
+ITPR = IIf(ITBC>ITTC,(ITBC-ITTC)*100/ITTC,(ITTC-ITBC)*100/ITBC);
+
+ItDPRUP = IIf(ItBC>ItTC,ItBC,ItTC);
+ItDPRDN = IIf(ItBC<ItTC,ItBC,ItTC);
+ITR1 = 2 * ITP - ITL1;
+ITR2 = ITP + (ITH1-ITL1);
+ITR3 = ITR1 + (ITH1-ITL1);
+ITR4 = ITR3 + (ITR2-ITR1);
+ITR5 = ITR4 + (ITR3-ITR2);
+ITR6 = ITR5 + (ITR4-ITR3);
+ITR7 = ITR6 + (ITR5-ITR4);
+
+ITS1 = 2 * ITP - ITH1;
+ITS2 = ITP - (ITH1-ITL1);
+ITS3 = ITS1 - (ITH1-ITL1);
+ITS4 = ITS3 - (ITS1-ITS2);
+ITS5 = ITS4 - (ITS2-ITS3);
+ITS6 = ITS5 - (ITS3-ITS4);
+ITS7 = ITS6 - (ITS4-ITS5);
+
+IGPVZBT = IIf(ITTC>ITBC,ITTC,ITBC) >= (ITC1 - (ITH1-ITL1) * (1.1/4)) AND (ITC1 - (ITH1-ITL1) * (1.1/4)) >= IIf(ITTC>ITBC,ITBC,ITTC);
+IGPVZST = IIf(ITTC>ITBC,ITTC,ITBC) >= (ITC1 + (ITH1-ITL1) * (1.1/4)) AND (ITC1 + (ITH1-ITL1) * (1.1/4)) >= IIf(ITTC>ITBC,ITBC,ITTC);
+IprevdayP = LastValue( ITP );
+IprevdayBC = LastValue( ITBC );
+IprevdayTC = LastValue( ITTC );
+ItodayPR = IIf(ItBC>ItTC,(ItBC-ItTC)*100/ItTC,(ItTC-ItBC)*100/ItBC);
+INxtdayfpvt = ParamToggle("Next INTRAday FP bc/p/tc","Show|Hide",1);
+IToday = LastValue(Day());
+ILVBI = LastVisibleValue(BarIndex());
+if(Inxtdayfpvt==1){
+
+IDayChange = DateNum() != Ref( DateNum(), -1 );
+IlastDayBegin = LastValue( ValueWhen( IDayChange, BarIndex() ) );
+
+Iextension = 500; // how many bars to right extend
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorBrown );
+GfxMoveTo( IlastDayBegin, IprevDayP );
+GfxLineTo( IlastDayBegin + Iextension, IprevDayP );
+GfxMoveTo( IlastDayBegin, IprevDayBC );
+GfxLineTo( IlastDayBegin + Iextension, IprevDayBC );
+GfxMoveTo( IlastDayBegin, IprevDayTC );
+GfxLineTo( IlastDayBegin + Iextension, IprevDayTC );
+}
+_SECTION_END();
+
+
+// running pivots
+
+_SECTION_BEGIN("11_DEVELOPING INTRADAY FLOOR PIVOTS");
+ISTARTTIME = 091500;
+Itn = TimeNum();
+ISTARTBAR = ITN == ISTARTTIME;
+ITRRH1 = HighestSince(ISTARTBAR,High);
+ITRRL1 = LOWESTSince(ISTARTBAR,LOW);
+ITRRC1 = C;
+ITRR4 = ITRRH1+(ITRRH1-ITRRL1);
+ITRR3 = ITRRH1+(ITRRH1-ITRRL1)*0.75;
+ITRR2 = ITRRH1+(ITRRH1-ITRRL1)*0.50;
+ITRR1 = ITRRH1+(ITRRH1-ITRRL1)*0.25;
+ITRRP = ( ITRRH1+ ITRRL1 + ITRRC1 )/3;
+ITRRS1 = ITRRH1-(ITRRH1-ITRRL1)*0.25;
+ITRRS2 = ITRRH1-(ITRRH1-ITRRL1)*0.50;
+ITRRS3 = ITRRH1-(ITRRH1-ITRRL1)*0.75;
+ITRRS4 = ITRRH1-(ITRRH1-ITRRL1);
+ITRRBC = (ITRRH1+ITRRL1)/2;
+ITRRTC = (ITRRP-ITRRBC)+ITRRP;
+IRPIVOTS = ParamToggle("Developing INTRADAY 125 MIN Pivots","Show|Hide",1);
+if(IRpivots==1){
+
+//Plot(ITRRBC, "",colorLightBlue,styleLine+styleNoRescale);
+//Plot(ITRRP, "",colorLightBlue,styleLine+styleNoRescale);
+//Plot(ITRRTC, "",colorLightBlue,styleLine+styleNoRescale);
+}
+_SECTION_END();
+
+
+
+
+
+
+// PIVOT BOSS PIVOTS 
+_SECTION_BEGIN("12_PIVOT BOSS PIVOTS");
+C1= TimeFrameGetPrice("C", inDaily, -1);		//				close
+H1= TimeFrameGetPrice("H", inDaily, -1);		//				close
+L1= TimeFrameGetPrice("L", inDaily, -1);		//				close
+Today = LastValue(Day());
+PLOTRNG=ParamList("PLOT PDHL ","Yes|No");
+if (PLOTRNG == "Yes")
+{
+IIf((Today < Day()),Plot(H1,"RANGEHIGH",colorwhite,styledots),Plot(H1,"RANGEHIGH",colorwhite,styleLine)); 
+IIf((Today < Day()),Plot(L1,"RANGELOW",colorWhite,styleDots),Plot(L1,"RANGELOW",colorWhite,styleLine)); 
+}
+//R4 = H1+(H1-L1);
+//R3 = H1+(H1-L1)*0.75;
+//R2 = H1+(H1-L1)*0.50;
+//R1 = H1+(H1-L1)*0.25;
+Pp = ( H1+ L1 + C1 )/3;
+//S1 = L1-(H1-L1)*0.25;
+//S2 = L1-(H1-L1)*0.50;
+//S3 = L1-(H1-L1)*0.75;
+//S4 = L1-(H1-L1);
+BC = (H1+L1)/2;
+TC = (Pp-BC)+Pp;
+PR = IIf(BC>TC,(BC-TC)*100/TC,(TC-BC)*100/BC);
+DPRUP = IIf(BC>TC,BC,TC);
+DPRDN = IIf(BC<TC,BC,TC);
+R1 = 2 * PP - L1;
+R2 = PP + (H1-L1);
+R3 = R1 + (H1-L1);
+R4 = R3 + (R2-R1);
+R5 = R4 + (R3-R2);
+R6 = R5 + (R4-R3);
+R7 = R6 + (R5-R4);
+
+S1 = 2 * PP - H1;
+S2 = PP - (H1-L1);
+S3 = S1 - (H1-L1);
+S4 = S3 - (S1-S2);
+S5 = S4 - (S2-S3);
+S6 = S5 - (S3-S4);
+S7 = S6 - (S4-S5);
+
+
+BPPP = LastValue(PP,1);
+BPDPRUP = LastValue(DPRUP,1); 
+BPDPRDN = LastValue(DPRDN,1);
+BPR1 = LastValue(r1,1);
+BPR2 = LastValue(r2,1);
+BPR3 = LastValue(r3,1);
+BPR4 = LastValue(r4,1);
+BPR5 = LastValue(r5,1);
+BPR6 = LastValue(r6,1);
+BPR7 = LastValue(r7,1);
+
+BPS1 = LastValue(s1,1);
+BPS2 = LastValue(s2,1);
+BPS3 = LastValue(s3,1);
+BPS4 = LastValue(S4,1);
+BPS5 = LastValue(s5,1);
+BPS6 = LastValue(S6,1);
+BPS7 = LastValue(S7,1);
+
+ 
+DayChange1 = DateNum() != Ref( DateNum(), -1 );
+lastDayBegin1 = LastValue( ValueWhen( DayChange1, BarIndex() ) );
+pvt = ParamToggle("PB Pivots and R and S","Show|Hide",1);
+Today = LastValue(Day());
+if(pvt==1){
+
+
+Plot(IIf(today == Day(), R1,Null), "R1",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R2,Null), "R2",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R3,Null), "R3",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R4,Null), "R4",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R5,Null), "R4",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R6,Null), "R4",colorRed,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), R7,Null), "R4",colorRed,styleLine+styleNoRescale);
+
+
+
+
+Plot(IIf(today == Day(), TC,Null), "TC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), TC,Null), "TC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), Pp,Null), "PVT",colorGold,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), BC,Null), "BC",colorGold,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), S1,Null), "S1",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S2,Null), "S2",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S3,Null), "S3",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S4,Null), "S4",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S5,Null), "S4",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S6,Null), "S4",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(today == Day(), S7,Null), "S4",colorBlue,styleLine+styleNoRescale);
+
+}
+
+pvtTEXT = ParamToggle("PB Pivots TEXT","Show|Hide",1);
+
+if(pvtTEXT==1){
+PlotText(" DPRUP = " + WriteVal(BPDPRUP,fraction), LastValue(BarIndex())+(numbars/Hts), bpDPRUP +0.05, colorBlue);
+PlotText(" DPRDN = " + WriteVal(BPDPRDN,fraction), LastValue(BarIndex())+(numbars/Hts), BPDPRDN +0.05, colorBlue);
+PlotText(" PP = " + WriteVal(BPPP,fraction), LastValue(BarIndex())+(numbars/Hts), BPPP+0.05, colorBlue);
+PlotText(" R1 = " + WriteVal(BPR1,fraction), LastValue(BarIndex())+(numbars/Hts), BPR1 +0.05, colorRed);
+PlotText(" R2 = " + WriteVal(BPR2,fraction), LastValue(BarIndex())+(numbars/Hts), BPR2 +0.05, colorRed);
+PlotText(" R3 = " + WriteVal(BPR3,fraction), LastValue(BarIndex())+(numbars/Hts), BPR3 +0.05, colorRed);
+PlotText(" R4 = " + WriteVal(BPR4,fraction), LastValue(BarIndex())+(numbars/Hts), BPR4 +0.05, colorRed);
+PlotText(" R5 = " + WriteVal(BPR5,fraction), LastValue(BarIndex())+(numbars/Hts), BPR5 +0.05, colorRed);
+PlotText(" R6 = " + WriteVal(BPR6,fraction), LastValue(BarIndex())+(numbars/Hts), BPR6 +0.05, colorRed);
+PlotText(" R7 = " + WriteVal(BPR7,fraction), LastValue(BarIndex())+(numbars/Hts), BPR7 +0.05, colorRed);
+
+
+PlotText(" S1 = " + WriteVal(BPS1,fraction), LastValue(BarIndex())+(numbars/Hts), BPS1 +0.05, colorGreen);
+PlotText(" S2 = " + WriteVal(BPS2,fraction), LastValue(BarIndex())+(numbars/Hts), BPS2 +0.05, colorGreen);
+PlotText(" S3 = " + WriteVal(BPS3,fraction), LastValue(BarIndex())+(numbars/Hts), BPS3 +0.05, colorGreen);
+PlotText(" S4 = " + WriteVal(BPS4,fraction), LastValue(BarIndex())+(numbars/Hts), BPS4 +0.05, colorGreen);
+PlotText(" S5 = " + WriteVal(BPS5,fraction), LastValue(BarIndex())+(numbars/Hts), BPS5 +0.05, colorGreen);
+PlotText(" S6 = " + WriteVal(BPS6,fraction), LastValue(BarIndex())+(numbars/Hts), BPS6 +0.05, colorGreen);
+PlotText(" S7 = " + WriteVal(BPS7,fraction), LastValue(BarIndex())+(numbars/Hts), BPS7 +0.05, colorGreen);
+
+}
+
+
+
+
+
+
+
+
+
+
+
+pvtTCPBCh = ParamToggle("Pivots historical TC/P/BC","Show|Hide",1);
+pvtTCPBCHSR = ParamToggle("Pivots historical TC/P/BC/S/R","Show|Hide",1);
+if(pvtTCPBCh==1){
+Plot(pp, "PVT",colorBlue,styleLine+styleNoRescale);
+Plot(bc, "BC",colorBlue,styleLine+styleNoRescale);
+Plot(tc, "TC",colorBlue,styleLine+styleNoRescale);
+PlotOHLC(Pp, IIf(BC>TC,BC,TC), IIf(BC>TC,TC,BC), Pp, "", colorLightYellow, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+if(pvtTCPBChSR==1){
+
+Plot(R4, "R4",colorRed,styleDashed+styleNoRescale);
+Plot(R3, "R3",colorRed,styleDashed+styleNoRescale);
+Plot(R2, "R2",colorRed,styleDashed+styleNoRescale);
+Plot(R1, "R1",colorRed,styleDashed+styleNoRescale);
+Plot(pp, "PVT",colorGold,styleLine+styleNoRescale);
+Plot(bc, "BC",colorGold,styleLine+styleNoRescale);
+Plot(tc, "TC",colorGold,styleLine+styleNoRescale);
+Plot(S1, "S1",colorBlue,styleDashed+styleNoRescale);
+Plot(S2, "S2",colorBlue,styleDashed+styleNoRescale);
+Plot(S3, "S3",colorBlue,styleDashed+styleNoRescale);
+Plot(S4, "S4",colorBlue,styleDashed+styleNoRescale);
+PlotOHLC(Pp, IIf(BC>TC,BC,TC), IIf(BC>TC,TC,BC), Pp, "", colorTurquoise, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+PPNO = Param("PP_EMA_PERIOD",375,0,500,1);
+MAPP = MA(PP,PPNO);
+PLOTMAPP=ParamList("PLOT MA_PP ","Yes|No");
+if (PLOTMAPP == "Yes")
+{
+Plot(MAPP,"MAPP",colorGrey40,styleDots);
+}
+_SECTION_END();
+
+
+
+
+
+// PIVOTBOSS PIVOTS BASED ON CURRENT DAY FOR NEXT DAY MARKET
+
+_SECTION_BEGIN("13_PIVOT BOSS PIVOTS BASED ON CURRENT Day");
+TC1= TimeFrameGetPrice("C", inDaily, 0);		//				close
+TH1= TimeFrameGetPrice("H", inDaily, 0);		//				close
+TL1= TimeFrameGetPrice("L", inDaily, 0);		//				close
+TO1 = TimeFrameGetPrice("O", inDaily,0);
+//TR4 = TH1+(TH1-TL1);
+//TR3 = TH1+(TH1-TL1)*0.75;
+//TR2 = TH1+(TH1-TL1)*0.50;
+//TR1 = TH1+(TH1-TL1)*0.25;
+TP = ( TH1+ TL1 + TC1 )/3;
+//TS1 = TH1-(TH1-TL1)*0.25;
+//TS2 = TH1-(TH1-TL1)*0.50;
+//TS3 = TH1-(TH1-TL1)*0.75;
+//TS4 = TH1-(TH1-TL1);
+TBC = (TH1+TL1)/2;
+TTC = (TP-TBC)+TP;
+TPR = IIf(TBC>TTC,(TBC-TTC)*100/TTC,(TTC-TBC)*100/TBC);
+
+tDPRUP = IIf(tBC>tTC,tBC,tTC);
+tDPRDN = IIf(tBC<tTC,tBC,tTC);
+TR1 = 2 * TP - TL1;
+TR2 = TP + (TH1-TL1);
+TR3 = TR1 + (TH1-TL1);
+TR4 = TR3 + (TR2-TR1);
+TR5 = TR4 + (TR3-TR2);
+TR6 = TR5 + (TR4-TR3);
+TR7 = TR6 + (TR5-TR4);
+
+TS1 = 2 * TP - TH1;
+TS2 = TP - (TH1-TL1);
+TS3 = TS1 - (TH1-TL1);
+TS4 = TS3 - (TS1-TS2);
+TS5 = TS4 - (TS2-TS3);
+TS6 = TS5 - (TS3-TS4);
+TS7 = TS6 - (TS4-TS5);
+
+
+
+GPVZBT = IIf(TTC>TBC,TTC,TBC) >= (TC1 - (TH1-TL1) * (1.1/4)) AND (TC1 - (TH1-TL1) * (1.1/4)) >= IIf(TTC>TBC,TBC,TTC);
+GPVZST = IIf(TTC>TBC,TTC,TBC) >= (TC1 + (TH1-TL1) * (1.1/4)) AND (TC1 + (TH1-TL1) * (1.1/4)) >= IIf(TTC>TBC,TBC,TTC);
+prevdayP = LastValue( TP );
+prevdayBC = LastValue( TBC );
+prevdayTC = LastValue( TTC );
+prevdayTR1 = LastValue(TR1);
+prevdayTS1 = LastValue(TS1);
+todayPR = IIf(tBC>tTC,(tBC-tTC)*100/tTC,(tTC-tBC)*100/tBC);
+Nxtdayfpvt = ParamToggle("Next day FP bc/p/tc","Show|Hide",1);
+Today = LastValue(Day());
+LVBI = LastVisibleValue(BarIndex());
+if(nxtdayfpvt==1){
+
+DayChange = DateNum() != Ref( DateNum(), -1 );
+lastDayBegin = LastValue( ValueWhen( DayChange, BarIndex() ) );
+
+extension = 500; // how many bars to right extend
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorPink );
+GfxMoveTo( lastDayBegin, prevDayP );
+GfxLineTo( lastDayBegin + extension, prevDayP );
+GfxMoveTo( lastDayBegin, prevDayBC );
+GfxLineTo( lastDayBegin + extension, prevDayBC );
+GfxMoveTo( lastDayBegin, prevDayTC );
+GfxLineTo( lastDayBegin + extension, prevDayTC );
+//GfxMoveTo( lastDayBegin, prevDayTR1 );
+//GfxLineTo( lastDayBegin + extension, prevDayTR1 );
+//GfxMoveTo( lastDayBegin, prevDayTS1 );
+//GfxLineTo( lastDayBegin + extension, prevDayTS1 );
+
+
+}
+_SECTION_END();
+
+
+// running pivots
+
+_SECTION_BEGIN("14_DEVELOPING FLOOR PIVOTS");
+STARTTIME = 091500;
+tn = TimeNum();
+STARTBAR = TN == STARTTIME;
+TRRH1 = HighestSince(STARTBAR,High);
+TRRL1 = LOWESTSince(STARTBAR,LOW);
+TRRC1 = C;
+TRR4 = TRRH1+(TRRH1-TRRL1);
+TRR3 = TRRH1+(TRRH1-TRRL1)*0.75;
+TRR2 = TRRH1+(TRRH1-TRRL1)*0.50;
+TRR1 = TRRH1+(TRRH1-TRRL1)*0.25;
+TRRP = ( TRRH1+ TRRL1 + TRRC1 )/3;
+TRRS1 = TRRH1-(TRRH1-TRRL1)*0.25;
+TRRS2 = TRRH1-(TRRH1-TRRL1)*0.50;
+TRRS3 = TRRH1-(TRRH1-TRRL1)*0.75;
+TRRS4 = TRRH1-(TRRH1-TRRL1);
+TRRBC = (TRRH1+TRRL1)/2;
+TRRTC = (TRRP-TRRBC)+TRRP;
+RPIVOTS = ParamToggle("Developing Pivots","Show|Hide",1);
+if(Rpivots==1){
+
+//Plot(TRRBC, "",colorYellow,styleLine+styleNoRescale);
+Plot(TRRP, "",colorYellow,styleLine+styleNoRescale);
+//Plot(TRRTC, "",colorYellow,styleLine+styleNoRescale);
+}
+_SECTION_END();
+
+
+_SECTION_BEGIN("11_DEVELOPING FLOOR PIVOTS_2DAYS");
+H1= TimeFrameGetPrice("H", inDaily, -1);		//				close
+L1= TimeFrameGetPrice("L", inDaily, -1);		//				close
+PPDH = TimeFrameGetPrice("H",inDaily,-2);
+PPDL = TimeFrameGetPrice("L",inDaily,-2);
+TDH = Max(PPDH,H1);
+TDL = Min(PPDL,L1);
+TDPp = ( TDH+TDL + C1 )/3;
+TDBC = (TDH+TDL)/2;
+TDTC = (TDPp-TDBC)+TDPp;
+TDPR = IIf(TDBC>TDTC,(TDBC-TDTC)*100/TDTC,(TDTC-TDBC)*100/TDBC);
+TDDPRUP = IIf(TDBC>TDTC,TDBC,TDTC);
+TDDPRDN = IIf(TDBC<TDTC,TDBC,TDTC);
+TDR1 = 2 * TDPP - TDL;
+TDR2 = TDPP + (TDH-TDL);
+TDR3 = TDR1 + (TDH-TDL);
+TDR4 = TDR3 + (TDR2-TDR1);
+TDR5 = TDR4 + (TDR3-TDR2);
+TDR6 = TDR5 + (TDR4-TDR3);
+TDR7 = TDR6 + (TDR5-TDR4);
+
+TDS1 = 2 * TDPP - TDH;
+TDS2 = TDPP - (TDH-TDL);
+TDS3 = TDS1 - (TDH-TDL);
+TDS4 = TDS3 - (TDS1-TDS2);
+TDS5 = TDS4 - (TDS2-TDS3);
+TDS6 = TDS5 - (TDS3-TDS4);
+TDS7 = TDS6 - (TDS4-TDS5);
+
+
+TDBPPP = LastValue(TDPP,1);
+TDBPDPRUP = LastValue(TDDPRUP,1); 
+TDBPDPRDN = LastValue(TDDPRDN,1);
+TDBPR1 = LastValue(TDr1,1);
+TDBPR2 = LastValue(TDr2,1);
+TDBPR3 = LastValue(TDr3,1);
+TDBPR4 = LastValue(TDr4,1);
+TDBPR5 = LastValue(TDr5,1);
+TDBPR6 = LastValue(TDr6,1);
+TDBPR7 = LastValue(TDr7,1);
+
+TDBPS1 = LastValue(TDs1,1);
+TDBPS2 = LastValue(TDs2,1);
+TDBPS3 = LastValue(TDs3,1);
+TDBPS4 = LastValue(TDS4,1);
+TDBPS5 = LastValue(TDs5,1);
+TDBPS6 = LastValue(TDS6,1);
+TDBPS7 = LastValue(TDS7,1);
+
+ 
+TDDayChange1 = DateNum() != Ref( DateNum(), -2 );
+TDlastDayBegin1 = LastValue( ValueWhen( TDDayChange1, BarIndex() ) );
+TDpvt = ParamToggle("PB 2DAY Pivots","Show|Hide",1);
+TDToday = LastValue(Day());
+if(TDpvt==1){
+
+
+Plot(IIf(TDtoday == Day(), TDR1,Null), "TDR1",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR2,Null), "TDR2",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR3,Null), "TDR3",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR4,Null), "TDR4",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR5,Null), "TDR5",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR6,Null), "TDR6",colorRed,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDR7,Null), "TDR7",colorRed,styleLine+styleNoRescale);
+
+
+
+
+Plot(IIf(TDtoday == Day(), TDTC,Null), "TDTC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDTC,Null), "TDTC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDPp,Null), "TDPVT",colorGold,styleDots+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDBC,Null), "TDBC",colorGold,styleDots+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS1,Null), "TDS1",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS2,Null), "TDS2",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS3,Null), "TDS3",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS4,Null), "TDS4",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS5,Null), "TDS5",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS6,Null), "TDS6",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(TDtoday == Day(), TDS7,Null), "TDS7",colorBlue,styleLine+styleNoRescale);
+
+}
+
+
+
+
+
+
+
+TDpvtTCPBCh = ParamToggle("Pivots historical 2 DAY TC/P/BC","Show|Hide",1);
+TDpvtTCPBCHSR = ParamToggle("Pivots historical 2 DAY TC/P/BC/S/R","Show|Hide",1);
+if(TDpvtTCPBCh==1){
+Plot(TDpp, "TDPVT",colorGold,styleLine+styleNoRescale);
+Plot(TDbc, "TDBC",colorGold,styleLine+styleNoRescale);
+Plot(TDtc, "TDTC",colorGold,styleLine+styleNoRescale);
+PlotOHLC(TDPp, IIf(TDBC>TDTC,TDBC,TDTC), IIf(TDBC>TDTC,TDTC,TDBC), TDPp, "", colorPaleBlue, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+if(TDpvtTCPBChSR==1){
+
+Plot(TDR4, "TDR4",colorRed,styleDashed+styleNoRescale);
+Plot(TDR3, "TDR3",colorRed,styleDashed+styleNoRescale);
+Plot(TDR2, "TDR2",colorRed,styleDashed+styleNoRescale);
+Plot(TDR1, "TDR1",colorRed,styleDashed+styleNoRescale);
+Plot(TDpp, "TDPVT",colorGold,styleLine+styleNoRescale);
+Plot(TDbc, "TDBC",colorGold,styleLine+styleNoRescale);
+Plot(TDtc, "TDTC",colorGold,styleLine+styleNoRescale);
+Plot(TDS1, "TDS1",colorBlue,styleDashed+styleNoRescale);
+Plot(TDS2, "TDS2",colorBlue,styleDashed+styleNoRescale);
+Plot(TDS3, "TDS3",colorBlue,styleDashed+styleNoRescale);
+Plot(TDS4, "TDS4",colorBlue,styleDashed+styleNoRescale);
+PlotOHLC(TDPp, IIf(TDBC>TDTC,TDBC,TDTC), IIf(TDBC>TDTC,TDTC,TDBC), TDPp, "", colorPaleBlue, styleCloud|styleNoLabel, Null, Null, 0, -1, 1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_SECTION_END();
+
+
+
+
+// PIVOTBOSS PIVOTS BASED ON CURRENT and prev DAY FOR NEXT DAY MARKET
+
+_SECTION_BEGIN("15_PIVOT BOSS 2 DAY PIVOTS BASED ON CURRENT AND PREV Day");
+TTC1= TimeFrameGetPrice("C", inDaily, 0);		//				close
+TTH1= Max(TimeFrameGetPrice("H", inDaily, 0),TimeFrameGetPrice("H", inDaily, -1));		//				close
+TTL1= Min(TimeFrameGetPrice("L", inDaily, 0),TimeFrameGetPrice("L", inDaily, -1));		//				close
+TTO1 = TimeFrameGetPrice("O", inDaily,-1);
+//TR4 = TH1+(TH1-TL1);
+//TR3 = TH1+(TH1-TL1)*0.75;
+//TR2 = TH1+(TH1-TL1)*0.50;
+//TR1 = TH1+(TH1-TL1)*0.25;
+TTP = ( TTH1+ TTL1 + TTC1 )/3;
+//TS1 = TH1-(TH1-TL1)*0.25;
+//TS2 = TH1-(TH1-TL1)*0.50;
+//TS3 = TH1-(TH1-TL1)*0.75;
+//TS4 = TH1-(TH1-TL1);
+TTBC = (TTH1+TTL1)/2;
+TTTC = (TTP-TTBC)+TTP;
+TTPR = IIf(TTBC>TTTC,(TTBC-TTTC)*100/TTTC,(TTTC-TTBC)*100/TTBC);
+
+TtDPRUP = IIf(TtBC>TtTC,TtBC,TtTC);
+TtDPRDN = IIf(TtBC<TtTC,TtBC,TtTC);
+TprevdayP = LastValue( TTP );
+TprevdayBC = LastValue( TTBC );
+TprevdayTC = LastValue( TTTC );
+TtodayPR = IIf(TtBC>TtTC,(TtBC-TtTC)*100/TtTC,(TtTC-TtBC)*100/TtBC);
+TNxtdayfpvt = ParamToggle("Next day 2 DAY FP bc/p/tc","Show|Hide",1);
+TToday = LastValue(Day());
+TLVBI = LastVisibleValue(BarIndex());
+if(Tnxtdayfpvt==1){
+
+TDayChange = DateNum() != Ref( DateNum(), -1 );
+TlastDayBegin = LastValue( ValueWhen( TDayChange, BarIndex() ) );
+
+Textension = 500; // how many bars to right extend
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorRed );
+GfxMoveTo( TlastDayBegin, TprevDayP );
+GfxLineTo( TlastDayBegin + Textension, TprevDayP );
+GfxMoveTo( TlastDayBegin, TprevDayBC );
+GfxLineTo( TlastDayBegin + Textension, TprevDayBC );
+GfxMoveTo( TlastDayBegin, TprevDayTC );
+GfxLineTo( TlastDayBegin + Textension, TprevDayTC );
+//GfxMoveTo( lastDayBegin, prevDayTR1 );
+//GfxLineTo( lastDayBegin + extension, prevDayTR1 );
+//GfxMoveTo( lastDayBegin, prevDayTS1 );
+//GfxLineTo( lastDayBegin + extension, prevDayTS1 );
+
+
+}
+_SECTION_END();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////// WEEKLY
+
+// PB PIVOTS BASED ON WEEKLY LEVELS
+_SECTION_BEGIN("16_PIVOT BOSS PIVOTS WEEKLY");
+WC1= TimeFrameGetPrice("C", inWeekly, -1);		//				close
+WH1= TimeFrameGetPrice("H", inWeekly, -1);		//				close
+WL1= TimeFrameGetPrice("L", inWeekly, -1);		//				close
+WToday = LastValue(Day());
+//WR4 = WH1+(WH1-WL1);
+//WR3 = WH1+(WH1-WL1)*0.75;
+//WR2 = WH1+(WH1-WL1)*0.50;
+//WR1 = WH1+(WH1-WL1)*0.25;
+WPp = ( WH1+ WL1 + WC1 )/3;
+//WS1 = WL1-(WH1-WL1)*0.25;
+//WS2 = WL1-(WH1-WL1)*0.50;
+//WS3 = WL1-(WH1-WL1)*0.75;
+//WS4 = WL1-(WH1-WL1);
+WBC = (WH1+WL1)/2;
+WTC = (WPp-WBC)+WPp;
+WPR = IIf(WBC>WTC,(WBC-WTC)*100/WTC,(WTC-WBC)*100/WBC);
+WPRUP = IIf(WBC>WTC,WBC,WTC);
+WPRDN = IIf(WBC<WTC,WBC,WTC);
+
+WR1 = 2 * WPP - WL1;
+WR2 = WPP + (WH1-WL1);
+WR3 = WR1 + (WH1-WL1);
+WR4 = WR3 + (WR2-WR1);
+WR5 = WR4 + (WR3-WR2);
+WR6 = WR5 + (WR4-WR3);
+WR7 = WR6 + (WR5-WR4);
+
+WS1 = 2 * WPP - WH1;
+WS2 = WPP - (WH1-WL1);
+WS3 = WS1 - (WH1-WL1);
+WS4 = WS3 - (WS1-WS2);
+WS5 = WS4 - (WS2-WS3);
+WS6 = WS5 - (WS3-WS4);
+WS7 = WS6 - (WS4-WS5);
+
+
+
+
+WDayChange1 = DateNum() != Ref( DateNum(), -1 );
+WlastDayBegin1 = LastValue( ValueWhen( DayChange1, BarIndex() ) );
+Wpvt = ParamToggle("PB WEEKLY Pivots and S and R","Show|Hide",1);
+WToday = LastValue(Day());
+if(Wpvt==1){
+Plot(IIf(Wtoday == Day(), WR1,Null), "WR1",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WR2,Null), "WR2",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WR3,Null), "WR3",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WR4,Null), "WR4",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WTC,Null), "WTC",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WTC,Null), "WTC",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WPp,Null), "WPVT",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WBC,Null), "WBC",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WS1,Null), "WS1",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WS2,Null), "WS2",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WS3,Null), "WS3",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Wtoday == Day(), WS4,Null), "WS4",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+
+}
+
+
+Wpvtonly = ParamToggle("PB WEEKLY Pivots Only","Show|Hide",1);
+WToday = LastValue(Day());
+if(Wpvtonly==1){
+Plot(IIf(Wtoday == Day(), WPp,Null), "WPVT",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+}
+
+
+WpvtTCPBCh = ParamToggle("WEEKLY Pivots historical TC/P/BC","Show|Hide",1);
+WpvtTCPBCHSR = ParamToggle("WEEKLY Pivots historical TC/P/BC/S/R","Show|Hide",1);
+if(WpvtTCPBCh==1){
+Plot(Wpp, "WEEKLY PVT",colorGold,styleLine+styleNoRescale);
+Plot(Wbc, "WEEKLY BC",colorGold,styleLine+styleNoRescale);
+Plot(Wtc, "WEEKLY TC",colorGold,styleLine+styleNoRescale);
+PlotOHLC(WPp, IIf(WBC>WTC,WBC,WTC), IIf(WBC>WTC,WTC,WBC), WPp, "", colorGreen, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+}
+
+if(WpvtTCPBChSR==1){
+
+Plot(WR4, "WR4",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(WR3, "WR3",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(WR2, "WR2",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(WR1, "WR1",colorBrightGreen,styleDots+styleNoRescale|styleThick);
+Plot(Wpp, "WPVT",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(Wbc, "WBC",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(Wtc, "WTC",colorBrightGreen,styleLine+styleNoRescale|styleThick);
+Plot(WS1, "WS1",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(WS2, "WS2",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(WS3, "WS3",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+Plot(WS4, "WS4",colorBrightGreen,styleDashed+styleNoRescale|styleThick);
+PlotOHLC(WPp, IIf(WBC>WTC,WBC,WTC), IIf(WBC>WTC,WTC,WBC), WPp, "", colorGreen, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+}
+
+WPPNO = Param("WEEKLY PP_EMA_PERIOD",375/5,0,500,1);
+WMAPP = MA(WPP,WPPNO);
+WPLOTMAPP=ParamList("PLOT WEEKLY MA_PP ","Yes|No");
+if (WPLOTMAPP == "Yes")
+{
+Plot(WMAPP,"WEEKLY MAPP",colorGrey40,styleDots);
+}
+_SECTION_END();
+
+
+pvtTEXTw = ParamToggle("PB Weekly Pivots TEXT","Show|Hide",1);
+
+BPPPW = LastValue(WPP,1);
+BPDPRUPW = LastValue(WPRUP,1); 
+BPDPRDNW = LastValue(WPRDN,1);
+BPRW1 = LastValue(Wr1,1);
+BPRW2 = LastValue(Wr2,1);
+BPRW3 = LastValue(Wr3,1);
+BPRW4 = LastValue(Wr4,1);
+BPRW5 = LastValue(Wr5,1);
+BPRW6 = LastValue(Wr6,1);
+BPRW7 = LastValue(Wr7,1);
+
+BPSW1 = LastValue(Ws1,1);
+BPSW2 = LastValue(Ws2,1);
+BPSW3 = LastValue(Ws3,1);
+BPSW4 = LastValue(WS4,1);
+BPSW5 = LastValue(Ws5,1);
+BPSW6 = LastValue(WS6,1);
+BPSW7 = LastValue(WS7,1);
+
+if(pvtTEXTw==1){
+PlotText(" WPRUP = " + WriteVal(BPDPRUPW,fraction), LastValue(BarIndex())+(numbars/Hts), BpDPRUPW +0.05, colorWhite);
+PlotText(" WPRDN = " + WriteVal(BPDPRDNW,fraction), LastValue(BarIndex())+(numbars/Hts), BPDPRDNW +0.05, colorWhite);
+PlotText(" WPP = " + WriteVal(BPPPW,fraction), LastValue(BarIndex())+(numbars/Hts), BPPPW+0.05, colorWhite);
+PlotText(" WR1 = " + WriteVal(BPRW1,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW1 +0.05, colorWhite);
+PlotText(" WR2 = " + WriteVal(BPRW2,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW2 +0.05, colorWhite);
+PlotText(" WR3 = " + WriteVal(BPRW3,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW3 +0.05, colorWhite);
+PlotText(" WR4 = " + WriteVal(BPRW4,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW4 +0.05, colorWhite);
+PlotText(" WR5 = " + WriteVal(BPRW5,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW5 +0.05, colorWhite);
+PlotText(" WR6 = " + WriteVal(BPRW6,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW6 +0.05, colorWhite);
+PlotText(" WR7 = " + WriteVal(BPRW7,fraction), LastValue(BarIndex())+(numbars/Hts), BPRW7 +0.05, colorWhite);
+
+
+PlotText(" WS1 = " + WriteVal(BPSW1,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW1 +0.05, colorAqua);
+PlotText(" WS2 = " + WriteVal(BPSW2,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW2 +0.05, colorAqua);
+PlotText(" WS3 = " + WriteVal(BPSW3,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW3 +0.05, colorAqua);
+PlotText(" WS4 = " + WriteVal(BPSW4,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW4 +0.05, colorAqua);
+PlotText(" WS5 = " + WriteVal(BPSW5,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW5 +0.05, colorAqua);
+PlotText(" WS6 = " + WriteVal(BPSW6,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW6 +0.05, colorAqua);
+PlotText(" WS7 = " + WriteVal(BPSW7,fraction), LastValue(BarIndex())+(numbars/Hts), BPSW7 +0.05, colorAqua);
+
+}
+
+
+// NEXT WEEK PIVOT LEVELS
+
+
+
+_SECTION_BEGIN("17_PIVOT BOSS PIVOTS BASED ON CURRENT WEEK");
+TWC1= TimeFrameGetPrice("C", inWeekly, 0);		//				close
+TWH1= TimeFrameGetPrice("H", inWeekly, 0);		//				close
+TWL1= TimeFrameGetPrice("L", inWeekly, 0);		//				close
+TWR4 = TWH1+(TWH1-TWL1);
+TWR3 = TWH1+(TWH1-TWL1)*0.75;
+TWR2 = TWH1+(TWH1-TWL1)*0.50;
+TWR1 = TWH1+(TWH1-TWL1)*0.25;
+TWP = ( TWH1+ TWL1 + TWC1 )/3;
+TWS1 = TWH1-(TWH1-TWL1)*0.25;
+TWS2 = TWH1-(TWH1-TWL1)*0.50;
+TWS3 = TWH1-(TWH1-TWL1)*0.75;
+TWS4 = TWH1-(TWH1-TWL1);
+TWBC = (TWH1+TWL1)/2;
+TWTC = (TWP-TWBC)+TWP;
+TWPR = IIf(TWBC>TWTC,(TWBC-TWTC)*100/TWTC,(TWTC-TWBC)*100/TWBC);
+
+tWDPRUP = IIf(tWBC>tWTC,tWBC,tWTC);
+tWDPRDN = IIf(tWBC<tWTC,tWBC,tWTC);
+WGPVZBT = IIf(TWTC>TWBC,TWTC,TWBC) >= (TWC1 - (TWH1-TWL1) * (1.1/4)) AND (TWC1 - (TWH1-TWL1) * (1.1/4)) >= IIf(TWTC>TWBC,TWBC,TWTC);
+WGPVZST = IIf(TWTC>TWBC,TWTC,TWBC) >= (TWC1 + (TWH1-TWL1) * (1.1/4)) AND (TWC1 + (TWH1-TWL1) * (1.1/4)) >= IIf(TWTC>TWBC,TWBC,TWTC);
+prevdayWP = LastValue( TWP );
+prevdayWBC = LastValue( TWBC );
+prevdayWTC = LastValue( TWTC );
+todayWPR = IIf(tWBC>tWTC,(tWBC-tWTC)*100/tWTC,(tWTC-tWBC)*100/tWBC);
+NxtdayWfpvt = ParamToggle("Next WEEK FP bc/p/tc","Show|Hide",1);
+TodayW = LastValue(Day());
+LVBIW = LastVisibleValue(BarIndex());
+if(nxtdayWfpvt==1){
+
+DaywChange = DateNum() != Ref( DateNum(), -1 );
+lastDayBeginw = LastValue( ValueWhen( DaywChange, BarIndex() ) );
+
+extensionw = 500; // how many bars to right extend
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorBlue );
+GfxMoveTo( lastDayBeginw, prevDaywP );
+GfxLineTo( lastDayBeginw + extensionw, prevDaywP );
+GfxMoveTo( lastDayBeginw, prevDaywBC );
+GfxLineTo( lastDayBeginw + extensionw, prevDaywBC );
+GfxMoveTo( lastDayBeginw, prevDaywTC );
+GfxLineTo( lastDayBeginw + extensionw, prevDaywTC );
+}
+_SECTION_END();
+
+
+// running WEEKLY pivots
+
+_SECTION_BEGIN("18_DEVELOPING WEEKLY FLOOR PIVOTS");
+//STARTTIME = 091500;
+//tn = TimeNum();
+Grid_Week = IIf(DayOfWeek() < Ref(DayOfWeek(), -1), 1, 0);
+//STARTBAR = TN == STARTTIME;
+TRRWH1 = HighestSince(GRID_WEEK,High);
+TRRWL1 = LOWESTSince(GRID_WEEK,LOW);
+TRRWC1 = C;
+TRRW4 = TRRWH1+(TRRWH1-TRRWL1);
+TRRW3 = TRRWH1+(TRRWH1-TRRWL1)*0.75;
+TRRW2 = TRRWH1+(TRRWH1-TRRWL1)*0.50;
+TRRW1 = TRRWH1+(TRRWH1-TRRWL1)*0.25;
+TRRWP = ( TRRWH1+ TRRWL1 + TRRWC1 )/3;
+TRRWS1 = TRRWH1-(TRRWH1-TRRWL1)*0.25;
+TRRWS2 = TRRWH1-(TRRWH1-TRRWL1)*0.50;
+TRRWS3 = TRRWH1-(TRRWH1-TRRWL1)*0.75;
+TRRWS4 = TRRWH1-(TRRWH1-TRRWL1);
+TRRWBC = (TRRWH1+TRRWL1)/2;
+TRRWTC = (TRRWP-TRRWBC)+TRRWP;
+RWPIVOTS = ParamToggle("Developing WEEKLY Pivots","Show|Hide",1);
+if(RWpivots==1){
+
+//Plot(TRRMBC, "",colorPink,styleLine+styleNoRescale);
+Plot(TRRWP, "",colorRed,styleLine+styleNoRescale|styleThick);
+//Plot(TRRMTC, "",colorPink,styleLine+styleNoRescale);
+}
+_SECTION_END();
+
+
+
+
+
+
+////MONTHLY
+
+// PB PIVOTS BASED ON monthlY LEVELS
+_SECTION_BEGIN("19_PIVOT BOSS PIVOTS MONTHLY");
+MC1= TimeFrameGetPrice("C", inMONTHLY, -1);		//				close
+MH1= TimeFrameGetPrice("H", inMONTHLY, -1);		//				close
+ML1= TimeFrameGetPrice("L", inMonthly, -1);		//				close
+MToday = LastValue(Day());
+//MR4 = MH1+(MH1-ML1);
+//MR3 = MH1+(MH1-ML1)*0.75;
+//MR2 = MH1+(MH1-ML1)*0.50;
+//MR1 = MH1+(MH1-ML1)*0.25;
+MPp = ( MH1+ ML1 + MC1 )/3;
+//MS1 = ML1-(MH1-ML1)*0.25;
+//MS2 = ML1-(MH1-ML1)*0.50;
+//MS3 = ML1-(MH1-ML1)*0.75;
+//MS4 = ML1-(MH1-ML1);
+MBC = (MH1+ML1)/2;
+MTC = (MPp-MBC)+MPp;
+MPR = IIf(MBC>MTC,(MBC-MTC)*100/MTC,(MTC-MBC)*100/MBC);
+MPRUP = IIf(MBC>MTC,MBC,MTC);
+MPRDN = IIf(MBC<MTC,MBC,MTC);
+
+MR1 = 2 * MPP - ML1;
+MR2 = MPP + (MH1-ML1);
+MR3 = MR1 + (MH1-ML1);
+MR4 = MR3 + (MR2-MR1);
+MR5 = MR4 + (MR3-MR2);
+MR6 = MR5 + (MR4-MR3);
+MR7 = MR6 + (MR5-MR4);
+
+MS1 = 2 * MPP - MH1;
+MS2 = MPP - (MH1-ML1);
+MS3 = MS1 - (MH1-ML1);
+MS4 = MS3 - (MS1-MS2);
+MS5 = MS4 - (MS2-MS3);
+MS6 = MS5 - (MS3-MS4);
+MS7 = MS6 - (MS4-MS5);
+
+
+
+MDayChange1 = DateNum() != Ref( DateNum(), -1 );
+MlastDayBegin1 = LastValue( ValueWhen( MDayChange1, BarIndex() ) );
+Mpvt = ParamToggle("PB MONTHLY Pivots and S and R","Show|Hide",1);
+MToday = LastValue(Day());
+if(Mpvt==1){
+Plot(IIf(Mtoday == Day(), MR1,Null), "MR1",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MR2,Null), "MR2",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MR3,Null), "MR3",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MR4,Null), "MR4",colorBlueGrey,styleDots+styleNoRescale|stylethick);
+Plot(IIf(Mtoday == Day(), MTC,Null), "MTC",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MTC,Null), "MTC",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MPp,Null), "MPVT",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MBC,Null), "MBC",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MS1,Null), "MS1",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MS2,Null), "MS2",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MS3,Null), "MS3",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Mtoday == Day(), MS4,Null), "MS4",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+
+}
+
+Mpvtonly = ParamToggle("PB MONTHLY Pivots only","Show|Hide",1);
+MToday = LastValue(Day());
+if(Mpvtonly==1){
+Plot(IIf(Mtoday == Day(), MPp,Null), "MPVT",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+}
+
+
+MpvtTCPBCh = ParamToggle("MONTHLY Pivots historical TC/P/BC","Show|Hide",1);
+MpvtTCPBCHSR = ParamToggle("MONTHLY Pivots historical TC/P/BC/S/R","Show|Hide",1);
+if(MpvtTCPBCh==1){
+Plot(Mpp, "MONTHLY PVT",colorDarkBlue,styleLine+styleNoRescale|styleThick);
+Plot(Mbc, "MONTHLY BC",colorDarkBlue,styleLine+styleNoRescale |styleThick);
+Plot(Mtc, "MONTHLY TC",colorDarkBlue,styleLine+styleNoRescale|styleThick);
+PlotOHLC(MPp, IIf(MBC>MTC,MBC,MTC), IIf(MBC>MTC,MTC,MBC), MPp, "", colorBlue, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+}
+
+if(MpvtTCPBChSR==1){
+
+Plot(MR4, "MR4",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(MR3, "MR3",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(MR2, "MR2",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(MR1, "MR1",colorBlueGrey,styleDots+styleNoRescale|styleThick);
+Plot(Mpp, "MPVT",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(Mbc, "MBC",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(Mtc, "MTC",colorBlueGrey,styleLine+styleNoRescale|styleThick);
+Plot(MS1, "MS1",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(MS2, "MS2",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(MS3, "MS3",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+Plot(MS4, "MS4",colorBlueGrey,styleDashed+styleNoRescale|styleThick);
+PlotOHLC(MPp, IIf(MBC>MTC,MBC,MTC), IIf(MBC>MTC,MTC,MBC), MPp, "", colorBlue, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+}
+
+MPPNO = Param("MONTHLY PP_EMA_PERIOD",375/20,0,500,1);
+MMAPP = MA(MPP,MPPNO);
+MPLOTMAPP=ParamList("PLOT MONTHLY MA_PP ","Yes|No");
+if (MPLOTMAPP == "Yes")
+{
+Plot(MMAPP,"MONTHLY MAPP",colorGrey40,styleDots);
+}
+_SECTION_END();
+
+
+
+
+
+_SECTION_BEGIN("20_PIVOT BOSS PIVOTS BASED ON CURRENT MONTH");
+TMC1= TimeFrameGetPrice("C", inMonthly, 0);		//				close
+TMH1= TimeFrameGetPrice("H", inMonthly, 0);		//				close
+TML1= TimeFrameGetPrice("L", inMonthly, 0);		//				close
+TMR4 = TMH1+(TMH1-TML1);
+TMR3 = TMH1+(TMH1-TML1)*0.75;
+TMR2 = TMH1+(TMH1-TML1)*0.50;
+TMR1 = TMH1+(TMH1-TML1)*0.25;
+TMP = ( TMH1+ TML1 + TMC1 )/3;
+TMS1 = TMH1-(TMH1-TML1)*0.25;
+TMS2 = TMH1-(TMH1-TML1)*0.50;
+TMS3 = TMH1-(TMH1-TML1)*0.75;
+TMS4 = TMH1-(TMH1-TML1);
+TMBC = (TMH1+TML1)/2;
+TMTC = (TMP-TMBC)+TMP;
+TMPR = IIf(TMBC>TMTC,(TMBC-TMTC)*100/TMTC,(TMTC-TMBC)*100/TMBC);
+
+tMDPRUP = IIf(tMBC>tMTC,tMBC,tMTC);
+tMDPRDN = IIf(tMBC<tMTC,tMBC,tMTC);
+MGPVZBT = IIf(TMTC>TMBC,TMTC,TMBC) >= (TMC1 - (TMH1-TML1) * (1.1/4)) AND (TMC1 - (TMH1-TML1) * (1.1/4)) >= IIf(TMTC>TMBC,TMBC,TMTC);
+MGPVZST = IIf(TMTC>TMBC,TMTC,TMBC) >= (TMC1 + (TMH1-TML1) * (1.1/4)) AND (TMC1 + (TMH1-TML1) * (1.1/4)) >= IIf(TMTC>TMBC,TMBC,TMTC);
+prevdayMP = LastValue( TMP );
+prevdayMBC = LastValue( TMBC );
+prevdayMTC = LastValue( TMTC );
+todayMPR = IIf(tMBC>tMTC,(tMBC-tMTC)*100/tMTC,(tMTC-tMBC)*100/tMBC);
+NxtdayMfpvt = ParamToggle("Next MONTH FP bc/p/tc","Show|Hide",1);
+TodayM = LastValue(Month());
+LVBIM = LastVisibleValue(BarIndex());
+if(nxtdayMfpvt==1){
+
+DayMChange = DateNum() != Ref( DateNum(), -1 );
+lastDayBeginM = LastValue( ValueWhen( DayMChange, BarIndex() ) );
+
+extensionM = 500; // how many bars to right extend
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorRed );
+GfxMoveTo( lastDayBeginM, prevDayMP );
+GfxLineTo( lastDayBeginM + extensionM, prevDayMP );
+GfxMoveTo( lastDayBeginM, prevDayMBC );
+GfxLineTo( lastDayBeginM + extensionM, prevDayMBC );
+GfxMoveTo( lastDayBeginM, prevDayMTC );
+GfxLineTo( lastDayBeginM + extensionM, prevDayMTC );
+}
+_SECTION_END();
+
+
+
+// running MONTHLY pivots
+
+_SECTION_BEGIN("21_DEVELOPING MONTHLY FLOOR PIVOTS");
+//STARTTIME = 091500;
+//tn = TimeNum();
+Grid_Month = IIf(Month() != Ref(Month(),-1), 1, 0); 
+//STARTBAR = TN == STARTTIME;
+TRRMH1 = HighestSince(GRID_MONTH,High);
+TRRML1 = LOWESTSince(GRID_MONTH,LOW);
+TRRMC1 = C;
+TRRM4 = TRRMH1+(TRRMH1-TRRML1);
+TRRM3 = TRRMH1+(TRRMH1-TRRML1)*0.75;
+TRRM2 = TRRMH1+(TRRMH1-TRRML1)*0.50;
+TRRM1 = TRRMH1+(TRRMH1-TRRML1)*0.25;
+TRRMP = ( TRRMH1+ TRRML1 + TRRMC1 )/3;
+TRRMS1 = TRRMH1-(TRRMH1-TRRML1)*0.25;
+TRRMS2 = TRRMH1-(TRRMH1-TRRML1)*0.50;
+TRRMS3 = TRRMH1-(TRRMH1-TRRML1)*0.75;
+TRRMS4 = TRRMH1-(TRRMH1-TRRML1);
+TRRMBC = (TRRMH1+TRRML1)/2;
+TRRMTC = (TRRMP-TRRMBC)+TRRMP;
+RMPIVOTS = ParamToggle("Developing MONTHLY Pivots","Show|Hide",1);
+if(RMpivots==1){
+
+//Plot(TRRMBC, "",colorPink,styleLine+styleNoRescale);
+Plot(TRRMP, "",colorBlue,styleLine+styleNoRescale | styleThick);
+//Plot(TRRMTC, "",colorPink,styleLine+styleNoRescale);
+}
+_SECTION_END();
+
+
+
+
+
+
+
+
+
+
+
+// MONTH PIVOT TEXT
+
+_SECTION_BEGIN("20_MONTHLY PIVOT TEXT");
+pvtTEXTM = ParamToggle("PB MONTHLY Pivots TEXT","Show|Hide",1);
+
+BPPPM = LastValue(MPP,1);
+BPDPRUPM = LastValue(MPRUP,1); 
+BPDPRDNM = LastValue(MPRDN,1);
+BPRM1 = LastValue(Mr1,1);
+BPRM2 = LastValue(Mr2,1);
+BPRM3 = LastValue(Mr3,1);
+BPRM4 = LastValue(Mr4,1);
+BPRM5 = LastValue(Mr5,1);
+BPRM6 = LastValue(Mr6,1);
+BPRM7 = LastValue(Mr7,1);
+
+BPSM1 = LastValue(Ms1,1);
+BPSM2 = LastValue(Ms2,1);
+BPSM3 = LastValue(Ms3,1);
+BPSM4 = LastValue(MS4,1);
+BPSM5 = LastValue(Ms5,1);
+BPSM6 = LastValue(MS6,1);
+BPSM7 = LastValue(MS7,1);
+
+if(pvtTEXTM==1){
+PlotText(" MPRUP = " + WriteVal(BPDPRUPM,fraction), LastValue(BarIndex())+(numbars/Hts), bpDPRUPM +0.05, colorBlue);
+PlotText(" PRDN = " + WriteVal(BPDPRDNM,fraction), LastValue(BarIndex())+(numbars/Hts), BPDPRDNM +0.05, colorBlue);
+PlotText(" MPP = " + WriteVal(BPPPM,fraction), LastValue(BarIndex())+(numbars/Hts), BPPPM+0.05, colorBlue);
+PlotText(" MR1 = " + WriteVal(BPRM1,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM1 +0.05, colorRed);
+PlotText(" MR2 = " + WriteVal(BPRM2,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM2 +0.05, colorRed);
+PlotText(" MR3 = " + WriteVal(BPRM3,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM3 +0.05, colorRed);
+PlotText(" MR4 = " + WriteVal(BPRM4,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM4 +0.05, colorRed);
+PlotText(" MR5 = " + WriteVal(BPRM5,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM5 +0.05, colorRed);
+PlotText(" MR6 = " + WriteVal(BPRM6,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM6 +0.05, colorRed);
+PlotText(" MR7 = " + WriteVal(BPRM7,fraction), LastValue(BarIndex())+(numbars/Hts), BPRM7 +0.05, colorRed);
+
+
+PlotText(" MS1 = " + WriteVal(BPSM1,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM1 +0.05, colorGreen);
+PlotText(" MS2 = " + WriteVal(BPSM2,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM2 +0.05, colorGreen);
+PlotText(" MS3 = " + WriteVal(BPSM3,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM3 +0.05, colorGreen);
+PlotText(" MS4 = " + WriteVal(BPSM4,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM4 +0.05, colorGreen);
+PlotText(" MS5 = " + WriteVal(BPSM5,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM5 +0.05, colorGreen);
+PlotText(" MS6 = " + WriteVal(BPSM6,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM6 +0.05, colorGreen);
+PlotText(" MS7 = " + WriteVal(BPSM7,fraction), LastValue(BarIndex())+(numbars/Hts), BPSM7 +0.05, colorGreen);
+
+}
+
+
+_SECTION_END();
+
+
+
+
+////YEARLY
+
+// PB PIVOTS BASED ON YEARLY LEVELS
+_SECTION_BEGIN("21_PIVOT BOSS PIVOTS YEARLY");
+YC1= TimeFrameGetPrice("C", inYearly, -1);		//				close
+YH1= TimeFrameGetPrice("H", inYearly, -1);		//				close
+YL1= TimeFrameGetPrice("L", inyearly, -1);		//				close
+YToday = LastValue(Year());
+//YR4 = YH1+(YH1-YL1);
+//YR3 = YH1+(YH1-YL1)*0.75;
+//YR2 = YH1+(YH1-YL1)*0.50;
+//YR1 = YH1+(YH1-YL1)*0.25;
+YPp = ( YH1+ YL1 + YC1 )/3;
+//YS1 = YL1-(YH1-YL1)*0.25;
+//YS2 = YL1-(YH1-YL1)*0.50;
+//YS3 = YL1-(YH1-YL1)*0.75;
+//YS4 = YL1-(YH1-YL1);
+YBC = (YH1+YL1)/2;
+YTC = (YPp-YBC)+YPp;
+
+YR1 = 2 * YPP - YL1;
+YR2 = YPP + (YH1-YL1);
+YR3 = YR1 + (YH1-YL1);
+YR4 = YR3 + (YR2-YR1);
+YR5 = YR4 + (YR3-YR2);
+YR6 = YR5 + (YR4-YR3);
+YR7 = YR6 + (YR5-YR4);
+
+YS1 = 2 * YPP - YH1;
+YS2 = YPP - (YH1-YL1);
+YS3 = YS1 - (YH1-YL1);
+YS4 = YS3 - (YS1-YS2);
+YS5 = YS4 - (YS2-YS3);
+YS6 = YS5 - (YS3-YS4);
+YS7 = YS6 - (YS4-YS5);
+
+
+
+YPR = IIf(YBC>YTC,(YBC-YTC)*100/YTC,(YTC-YBC)*100/YBC);
+YPRUP = IIf(YBC>YTC,YBC,YTC);
+YRDN = IIf(YBC<YTC,YBC,YTC);
+YDayChange1 = DateNum() != Ref( DateNum(), -1 );
+YlastDayBegin1 = LastValue( ValueWhen( YDayChange1, BarIndex() ) );
+Ypvt = ParamToggle("PB YEARLY Pivots","Show|Hide",1);
+YToday = LastValue(Day());
+if(Ypvt==1){
+Plot(IIf(Ytoday == Year(), YR1,Null), "YR1",colorRed,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YR2,Null), "YR2",colorRed,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YR3,Null), "YR3",colorRed,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YR4,Null), "YR4",colorRed,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YTC,Null), "YTC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YTC,Null), "YTC",colorgold,styleDots+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YPp,Null), "YPVT",colorGold,styleDots+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YBC,Null), "YBC",colorGold,styleDots+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YS1,Null), "YS1",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YS2,Null), "YS2",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YS3,Null), "YS3",colorBlue,styleLine+styleNoRescale);
+Plot(IIf(Ytoday == Year(), YS4,Null), "YS4",colorBlue,styleLine+styleNoRescale);
+
+}
+
+YpvtTCPBCh = ParamToggle("YEARLY Pivots historical TC/P/BC","Show|Hide",1);
+YpvtTCPBCHSR = ParamToggle("YEARLY Pivots historical TC/P/BC/S/R","Show|Hide",1);
+if(YpvtTCPBCh==1){
+Plot(Ypp, "YEARLY PVT",colorDarkRed,styleLine+styleNoRescale|styleThick);
+Plot(Ybc, "YEARLY BC",colorDarkRed,styleLine+styleNoRescale |styleThick);
+Plot(Ytc, "YEARLY TC",colorDarkRed,styleLine+styleNoRescale|styleThick);
+PlotOHLC(YPp, IIf(YBC>YTC,YBC,YTC), IIf(YBC>YTC,YTC,YBC), YPp, "", colorDARKRED, styleCloud|styleNoLabel|styleThick, Null, Null, 0, -5, 1);
+}
+
+if(YpvtTCPBChSR==1){
+
+Plot(YR4, "YR4",colorRed,styleDashed+styleNoRescale);
+Plot(YR3, "YR3",colorRed,styleDashed+styleNoRescale);
+Plot(YR2, "YR2",colorRed,styleDashed+styleNoRescale);
+Plot(YR1, "YR1",colorRed,styleDashed+styleNoRescale);
+Plot(Ypp, "YPVT",colorGold,styleLine+styleNoRescale);
+Plot(Ybc, "YBC",colorGold,styleLine+styleNoRescale);
+Plot(Ytc, "YTC",colorGold,styleLine+styleNoRescale);
+Plot(YS1, "YS1",colorBlue,styleDashed+styleNoRescale);
+Plot(YS2, "YS2",colorBlue,styleDashed+styleNoRescale);
+Plot(YS3, "YS3",colorBlue,styleDashed+styleNoRescale);
+Plot(YS4, "YS4",colorBlue,styleDashed+styleNoRescale);
+PlotOHLC(YPp, IIf(YBC>YTC,YBC,YTC), IIf(YBC>YTC,YTC,YBC), YPp, "", colorDarkRed, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+}
+
+
+_SECTION_END();
+
+
+////VWAP
+
+// VWAP
+
+_SECTION_BEGIN("22_VWAP");
+ShowVWAP=ParamList("Show VWAP ","No|Yes");
+ShowVWAPMTF = ParamList( "PlotVWAP", "Daily|Weekly|Monthly|ALL",0 );
+ShowVWAPBANDS = ParamList( "PlotVWAPBands", "No|Yes" );
+
+
+function Lastthursday()
+{
+    Daysinmonth = IIf( Month() == 1 OR Month() == 3 OR Month() == 5 OR Month() == 7 OR Month() == 8 OR Month() == 10 OR Month() == 12, 31, 30 );
+    Daysinmonthfeb = IIf( Year() % 4 == 0 AND Year() % 100 != 0, 29, 28 );
+    Daysinmonthfinal = IIf( Month() == 2, Daysinmonthfeb, Daysinmonth );
+    returnvalue = IIf( Daysinmonthfinal - Day() < 7 AND DayOfWeek() == 4, 1, IIf( Daysinmonthfinal - Day() < 8 AND DayOfWeek() == 3 AND Ref( DayOfWeek(), 1 ) != 4 AND Day() != Daysinmonthfinal , 1, 0 ) );
+    return returnvalue;
+}
+
+Period = ParamList( "Base", "Daily|Weekly|Monthly|Quarterly|ALL",0 );
+
+
+
+if(Period=="Daily" )
+{
+Bars_so_far_todayD = 1 + BarsSince( Day() != Ref(Day(), -1));
+StartBarD = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeD = Sum(V,Bars_so_far_todayD);
+averageD = (H+L+C)/3;
+IIf (BarIndex() >= StartBarD, VWAPD = Sum (averageD * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPHD = Sum (H * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPLD = Sum (L * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPCD = Sum (C * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+
+}
+
+if(Period=="Weekly" OR Interval()==24 * 3600 )
+{ 
+Bars_so_far_todayW = 1 + BarsSince(DayOfWeek() < Ref( DayOfWeek(), -1 ));
+StartBarW = ValueWhen(TimeNum() == 091500, BarIndex());
+VolW = TimeFrameGetPrice("V", inWeekly, 0);
+TodayVolumeW = Sum(VolW,Bars_so_far_todayW);
+averageW = (H+L+C)/3;
+IIf (BarIndex() >= StartBarW, VWAPW = Sum (averageW * VolW, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPHW = Sum (H * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPLW = Sum (L * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPCW = Sum (C * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+
+}
+
+if(Period=="Monthly"  )
+{
+Bars_so_far_todayM = 1 + BarsSince(Month() != Ref(Month(), -1));
+VolM = TimeFrameGetPrice("V", inMonthly, 0);
+StartBarM = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeM = Sum(VolM,Bars_so_far_todayM);
+averageM = (H+L+C)/3;
+IIf (BarIndex() >= StartBarM, VWAPM = Sum (averageM * VolM, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPHM = Sum (H * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPLM = Sum (L * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPCM = Sum (C * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+
+}
+
+
+LastDayofQuarter = Month() != Ref(Month(), 1) AND (Month() == 3 OR Month() == 6 OR Month() == 9 OR Month() == 12);
+Last_Quarter = IIf(Ref(LastDayofQuarter,-1), 1, 0);
+
+if(Period=="Quarterly" )
+{
+Bars_so_far_todayQ = 1 + BarsSince(LastdayofQuarter != Last_Quarter);
+VolQ = TimeFrameGetPrice("V", inQuarterly, 0);
+StartBarQ = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeQ = Sum(Vol,Bars_so_far_today);
+averageQ = (H+L+C)/3;
+IIf (BarIndex() >= StartBarQ, VWAP = Sum (averageQ * Vol, Bars_so_far_todayQ  ) / TodayVolumeQ,0);
+IIf (BarIndex() >= StartBarQ, VWAPHQ = Sum (H * V, Bars_so_far_todayQ  ) / TodayVolumeQ,0);
+IIf (BarIndex() >= StartBarQ, VWAPLQ = Sum (L * V, Bars_so_far_todayQ  ) / TodayVolumeQ,0);
+IIf (BarIndex() >= StartBarQ, VWAPCQ = Sum (C * V, Bars_so_far_todayQ  ) / TodayVolumeQ,0);
+
+}
+
+
+
+if(Period=="ALL" )
+{
+Bars_so_far_todayD = 1 + BarsSince( Day() != Ref(Day(), -1));
+StartBarD = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeD = Sum(V,Bars_so_far_todayD);
+averageD = (H+L+C)/3;
+IIf (BarIndex() >= StartBarD, VWAPD = Sum (averageD * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPHD = Sum (H * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPLD = Sum (L * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+IIf (BarIndex() >= StartBarD, VWAPCD = Sum (C * V, Bars_so_far_todayD  ) / TodayVolumeD,0);
+
+
+Bars_so_far_todayW = 1 + BarsSince(DayOfWeek() < Ref( DayOfWeek(), -1 ));
+StartBarW = ValueWhen(TimeNum() == 091500, BarIndex());
+VolW = TimeFrameGetPrice("V", inWeekly, 0);
+TodayVolumeW = Sum(VolW,Bars_so_far_todayW);
+averageW = (H+L+C)/3;
+IIf (BarIndex() >= StartBarW, VWAPW = Sum (averageW * VolW, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPHW = Sum (H * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPLW = Sum (L * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBar, VWAPCW = Sum (C * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+
+
+Bars_so_far_todayM = 1 + BarsSince(Month() != Ref(Month(), -1));
+VolM = TimeFrameGetPrice("V", inMonthly, 0);
+StartBarM = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeM = Sum(VolM,Bars_so_far_todayM);
+averageM = (H+L+C)/3;
+IIf (BarIndex() >= StartBarM, VWAPM = Sum (averageM * VolM, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPHM = Sum (H * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPLM = Sum (L * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPCM = Sum (C * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+
+
+}
+
+
+
+
+
+
+
+if (showVWAPMTF == "Daily")
+{
+Plot (VWAPD, "VwapD",colorBlue, stylethick);
+}
+
+if (showVWAPMTF == "Weekly")
+{
+Bars_so_far_todayW = 1 + BarsSince(DayOfWeek() < Ref( DayOfWeek(), -1 ));
+StartBarW = ValueWhen(TimeNum() == 091500, BarIndex());
+VolW = TimeFrameGetPrice("V", inWeekly, 0);
+TodayVolumeW = Sum(VolW,Bars_so_far_todayW);
+averageW = (H+L+C)/3;
+IIf (BarIndex() >= StartBarW, VWAPW = Sum (averageW * VolW, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPHW = Sum (H * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPLW = Sum (L * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPCW = Sum (C * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+
+Plot (VWAPw, "VwapW",colorgreen, stylethick);
+
+}
+
+if (showVWAPMTF == "Monthly")
+{
+Bars_so_far_todayM = 1 + BarsSince(Month() != Ref(Month(), -1));
+VolM = TimeFrameGetPrice("V", inMonthly, 0);
+StartBarM = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeM = Sum(VolM,Bars_so_far_todayM);
+averageM = (H+L+C)/3;
+IIf (BarIndex() >= StartBarM, VWAPM = Sum (averageM * VolM, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPHM = Sum (H * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPLM = Sum (L * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPCM = Sum (C * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+
+Plot (VWAPM, "VwapM",colorGold, stylethick);
+}
+
+if (showVWAPMTF == "ALL")
+{
+Plot (VWAPD, "VwapD",colorBlue, stylethick);
+
+Bars_so_far_todayW = 1 + BarsSince(DayOfWeek() < Ref( DayOfWeek(), -1 ));
+StartBarW = ValueWhen(TimeNum() == 091500, BarIndex());
+VolW = TimeFrameGetPrice("V", inWeekly, 0);
+TodayVolumeW = Sum(VolW,Bars_so_far_todayW);
+averageW = (H+L+C)/3;
+IIf (BarIndex() >= StartBarW, VWAPW = Sum (averageW * VolW, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPHW = Sum (H * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPLW = Sum (L * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+IIf (BarIndex() >= StartBarW, VWAPCW = Sum (C * V, Bars_so_far_todayW  ) / TodayVolumeW,0);
+Plot (VWAPw, "VwapW",colorgreen, stylethick);
+
+Bars_so_far_todayM = 1 + BarsSince(Month() != Ref(Month(), -1));
+VolM = TimeFrameGetPrice("V", inMonthly, 0);
+StartBarM = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolumeM = Sum(VolM,Bars_so_far_todayM);
+averageM = (H+L+C)/3;
+IIf (BarIndex() >= StartBarM, VWAPM = Sum (averageM * VolM, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPHM = Sum (H * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPLM = Sum (L * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+IIf (BarIndex() >= StartBarM, VWAPCM = Sum (C * V, Bars_so_far_todayM  ) / TodayVolumeM,0);
+Plot (VWAPM, "VwapM",colorGold, stylethick);
+
+}
+
+
+
+
+if (showVWAPBands == "Yes")
+{
+Plot (VWAPd, "Vwap",colorBlue, stylethick);
+Plot (VWAPd+1*StDev(abs(vwapd-C),300), "Vwap1sdR1",colorBlueGrey,styleThick,width=100);
+Plot (VWAPd+2*StDev(abs(vwapd-C),300), "Vwap2sdR2",colorBlueGrey,styleThick,width=100);
+Plot (VWAPd+3*StDev(abs(vwapd-C),300), "Vwap3sdR3",colorBlueGrey,styleThick,width=100);
+Plot (VWAPd-1*StDev(abs(vwapd-C),300), "Vwap1sdS1",colorBlueGrey,styleThick,width=100);
+Plot (VWAPd-2*StDev(abs(vwapd-C),300), "Vwap1sdS2",colorBlueGrey,styleThick,width=100);
+Plot (VWAPd-3*StDev(abs(vwapd-C),300), "Vwap1sdS3",colorBlueGrey,styleThick,width=100);
+
+
+}
+
+
+_SECTION_END();
+
+
+
+
+// camrilla pivots
+
+////CAMARILLA PIVOTS
+
+// PREV DAY'S CM PIVOTS DAILY PIVOTS
+
+_SECTION_BEGIN ("23_CAMARILLA PIVOTS INTRADAY 125MIN");
+ICMRNG = IH1-IL1;
+ICMH1 = (IC1 + ICMRNG * (1.1/12));
+ICMH2 = (IC1 + ICMRNG * (1.1/6));
+ICMH3 = (IC1 + ICMRNG * (1.1/4));
+ICMH4 = (IC1 + ICMRNG * (1.1/2));
+ICMH5 = (IH1/IL1)*IC1;
+ICML1 = (IC1 - ICMRNG * (1.1/12));
+ICML2 = (IC1 - ICMRNG * (1.1/6));
+ICML3 = (IC1 - ICMRNG * (1.1/4));
+ICML4 = (IC1 - ICMRNG * (1.1/2));
+ICML5 = IC1-(ICMH5-IC1);
+
+
+// PREV TO PREV DAY'S CM PIVOTS DAILY PIVOTS
+
+IPPDH1 = TimeFrameGetPrice("H", in1Minute * 126, -2);		// yesterdays high
+IPPDL1 = TimeFrameGetPrice("L", in1Minute * 126, -2);		//				low
+IPPDC1= TimeFrameGetPrice("C", in1Minute * 1256 -2);		//				close
+
+
+IPPDCMRNG = IPPDH1-IPPDL1;
+IPPDCMH1 = (IPPDC1 + IPPDCMRNG * (1.1/12));
+IPPDCMH2 = (IPPDC1 + IPPDCMRNG * (1.1/6));
+IPPDCMH3 = (IPPDC1 + IPPDCMRNG * (1.1/4));
+IPPDCMH4 = (IPPDC1 + IPPDCMRNG * (1.1/2));
+IPPDCMH5 = (IPPDH1/IPPDL1)*IPPDC1;
+IPPDCML1 = (IPPDC1 - IPPDCMRNG * (1.1/12));
+IPPDCML2 = (IPPDC1 - IPPDCMRNG * (1.1/6));
+IPPDCML3 = (IPPDC1 - IPPDCMRNG * (1.1/4));
+IPPDCML4 = (IPPDC1 - IPPDCMRNG * (1.1/2));
+IPPDCML5 = IPPDC1-(IPPDCMH5-IPPDC1);
+
+
+
+
+// NEXT INTRADAY'S CAMARILLA PIVOTS
+
+
+
+ITH1 = TimeFrameGetPrice("H", in1Minute * 126, 0);		//  high
+ITL1 = TimeFrameGetPrice("L", in1Minute * 126, 0);		//				low
+ITC1= TimeFrameGetPrice("C", in1Minute * 126, 0);		//				close
+ITDayO = TimeFrameGetPrice("O",in1Minute * 126,0);		// current day open
+
+ITCMRNG = ITH1-ITL1;
+ITCMH1 = (ITC1 + ITCMRNG * (1.1/12));
+ITCMH2 = (ITC1 + ITCMRNG * (1.1/6));
+ITCMH3 = (ITC1 + ITCMRNG * (1.1/4));
+ITCMH4 = (ITC1 + ITCMRNG * (1.1/2));
+ITCMH5 = (ITH1/ITL1)*ITC1;
+ITCML1 = (ITC1 - ITCMRNG * (1.1/12));
+ITCML2 = (ITC1 - ITCMRNG * (1.1/6));
+ITCML3 = (ITC1 - ITCMRNG * (1.1/4));
+ITCML4 = (ITC1 - ITCMRNG * (1.1/2));
+ITCML5 = ITC1-(ITCMH5-ITC1);
+
+ITDTCMH3 = LastValue( ITCMH3 );
+ITDTCML3 = LastValue( ITCML3 );
+ITDTCMH4 = LastValue( ITCMH4 );
+ITDTCML4 = LastValue( ITCML4 );
+ITDTCMH5 = LastValue( ITCMH5 );
+ITDTCML5 = LastValue( ITCML5 );
+
+
+
+
+// PREV DAY'S CM PIVOTS DAILY PIVOTS
+
+_SECTION_BEGIN ("24_CAMARILLA PIVOTS");
+CMRNG = H1-L1;
+CMH1 = (C1 + CMRNG * (1.1/12));
+CMH2 = (C1 + CMRNG * (1.1/6));
+CMH3 = (C1 + CMRNG * (1.1/4));
+CMH4 = (C1 + CMRNG * (1.1/2));
+CMH5 = (H1/L1)*C1;
+CML1 = (C1 - CMRNG * (1.1/12));
+CML2 = (C1 - CMRNG * (1.1/6));
+CML3 = (C1 - CMRNG * (1.1/4));
+CML4 = (C1 - CMRNG * (1.1/2));
+CML5 = C1-(CMH5-C1);
+
+
+// PREV TO PREV DAY'S CM PIVOTS DAILY PIVOTS
+
+PPDH1 = TimeFrameGetPrice("H", inDaily, -2);		// yesterdays high
+PPDL1 = TimeFrameGetPrice("L", inDaily, -2);		//				low
+PPDC1= TimeFrameGetPrice("C", inDaily, -2);		//				close
+
+
+PPDCMRNG = PPDH1-PPDL1;
+PPDCMH1 = (PPDC1 + PPDCMRNG * (1.1/12));
+PPDCMH2 = (PPDC1 + PPDCMRNG * (1.1/6));
+PPDCMH3 = (PPDC1 + PPDCMRNG * (1.1/4));
+PPDCMH4 = (PPDC1 + PPDCMRNG * (1.1/2));
+PPDCMH5 = (PPDH1/PPDL1)*PPDC1;
+PPDCML1 = (PPDC1 - PPDCMRNG * (1.1/12));
+PPDCML2 = (PPDC1 - PPDCMRNG * (1.1/6));
+PPDCML3 = (PPDC1 - PPDCMRNG * (1.1/4));
+PPDCML4 = (PPDC1 - PPDCMRNG * (1.1/2));
+PPDCML5 = PPDC1-(PPDCMH5-PPDC1);
+
+
+
+
+// NEXT DAY'S CAMARILLA PIVOTS
+
+
+
+TH1 = TimeFrameGetPrice("H", inDaily, 0);		//  high
+TL1 = TimeFrameGetPrice("L", inDaily, 0);		//				low
+TC1= TimeFrameGetPrice("C", inDaily, 0);		//				close
+TDayO = TimeFrameGetPrice("O", inDaily,0);		// current day open
+
+TCMRNG = TH1-TL1;
+TCMH1 = (TC1 + TCMRNG * (1.1/12));
+TCMH2 = (TC1 + TCMRNG * (1.1/6));
+TCMH3 = (TC1 + TCMRNG * (1.1/4));
+TCMH4 = (TC1 + TCMRNG * (1.1/2));
+TCMH5 = (TH1/TL1)*TC1;
+TCML1 = (TC1 - TCMRNG * (1.1/12));
+TCML2 = (TC1 - TCMRNG * (1.1/6));
+TCML3 = (TC1 - TCMRNG * (1.1/4));
+TCML4 = (TC1 - TCMRNG * (1.1/2));
+TCML5 = TC1-(TCMH5-TC1);
+
+TDTCMH3 = LastValue( TCMH3 );
+TDTCML3 = LastValue( TCML3 );
+TDTCMH4 = LastValue( TCMH4 );
+TDTCML4 = LastValue( TCML4 );
+TDTCMH5 = LastValue( TCMH5 );
+TDTCML5 = LastValue( TCML5 );
+
+
+
+
+
+//// PREV DAY'S CM WEEKLY PIVOTS
+
+
+
+WH1 = TimeFrameGetPrice("H", inWeekly,-1 );		//  high
+WL1 = TimeFrameGetPrice("L", inWeekly, -1);		//				low
+WC1= TimeFrameGetPrice("C", inWeekly, -1);		//				close
+WDayO = TimeFrameGetPrice("O", inWeekly,-1);		// current day open
+
+
+WCMRNG = WH1-WL1;
+WCMH1 = (WC1 + WCMRNG * (1.1/12));
+WCMH2 = (WC1 + WCMRNG * (1.1/6));
+WCMH3 = (WC1 + WCMRNG * (1.1/4));
+WCMH4 = (WC1 + WCMRNG * (1.1/2));
+WCMH5 = (WH1/WL1)*WC1;
+WCML1 = (WC1 - WCMRNG * (1.1/12));
+WCML2 = (WC1 - WCMRNG * (1.1/6));
+WCML3 = (WC1 - WCMRNG * (1.1/4));
+WCML4 = (WC1 - WCMRNG * (1.1/2));
+WCML5 = WC1-(WCMH5-WC1);
+
+
+
+
+
+
+// PLOTTING CM PIVOTS
+
+CMpvt = ParamToggle("CAM Pivot 3/4/5 LAYERS","Show|Hide",1);
+Today = LastValue(Day());
+LVBI = LastVisibleValue(BarIndex());
+
+if(CMpvt==1){
+
+
+Plot(IIf(today == Day(), CMH5,Null), "CMH5",colorWhite,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), CMH4,Null), "CMH4",colorWhite,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), CMH3,Null), "CMH3",colorBlue,styleDots+styleNoRescale);
+
+Plot(IIf(today == Day(), CML3,Null), "CML3",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), CML4,Null), "CML4",colorWhite,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), CML5,Null), "CML5",colorWhite,styleDots+styleNoRescale);
+
+PlotOHLC(CMH3, CMH3, CML3, CML3, "", colorPaleBlue, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+
+}
+
+
+
+CMpvthl = ParamToggle("CAM Pivots ALL LAYERS","Show|Hide",1);
+Today = LastValue(Day());
+if(CMpvthl==1){
+
+
+Plot(IIf(today == Day(), CMH5,Null), "CMH5",colorWhite,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CMH4,Null), "CMH4",colorWhite,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CMH3,Null), "CMH3",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CMH2,Null), "CMH2",colorWhite,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CMH1,Null), "CMH1",colorWhite,styleDashed+styleNoRescale);
+
+Plot(IIf(today == Day(), CML1,Null), "CML1",colorGreen,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CML2,Null), "CML2",colorGreen,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CML3,Null), "CML3",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CML4,Null), "CML4",colorGreen,styleDashed+styleNoRescale);
+Plot(IIf(today == Day(), CML5,Null), "CML5",colorGreen,styleDashed+styleNoRescale);
+}
+
+
+
+
+CMpvthISTORY = ParamToggle("CAM Pivots L3/H3 HISTORY","Show|Hide",1);
+Today = LastValue(Day());
+if(CMpvthISTORY==1){
+
+
+Plot(CMH3, "",colorBlue,styleDots+styleNoRescale|stylethick);
+Plot(CML3, "",colorBlue,styledots+styleNoRescale|styleThick);
+//Plot(CMH4, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CML4, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CMH5, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CML5, "",colorWhite,styleDashed+styleNoRescale);
+
+
+}
+
+
+ICMpvt = ParamToggle("CAM INTRADAY Pivot 3/4/5 LAYERS","Show|Hide",1);
+IToday = LastValue(Day());
+ILVBI = LastVisibleValue(BarIndex());
+
+if(ICMpvt==1){
+
+
+Plot(IIf(Itoday == Day(), ICMH5,Null), "ICMH5",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICMH4,Null), "ICMH4",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICMH3,Null), "ICMH3",colorBlue,styleLine+styleNoRescale|styleThick);
+
+Plot(IIf(Itoday == Day(), ICML3,Null), "ICML3",colorBlue,styleLine+styleNoRescale|styleThick);
+Plot(IIf(Itoday == Day(), ICML4,Null), "ICML4",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICML5,Null), "ICML5",colorBlue,styleDots+styleNoRescale);
+
+PlotOHLC(ICMH3, ICMH3, ICML3, ICML3, "", colorLavender, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+
+}
+
+
+
+ICMpvthl = ParamToggle("CAM INTRADAY Pivots ALL LAYERS","Show|Hide",1);
+IToday = LastValue(Day());
+if(ICMpvthl==1){
+
+
+Plot(IIf(Itoday == Day(), ICMH5,Null), "ICMH5",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICMH4,Null), "ICMH4",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICMH3,Null), "ICMH3",colorBlue,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Itoday == Day(), ICMH2,Null), "ICMH2",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICMH1,Null), "ICMH1",colorBlue,styleDashed+styleNoRescale);
+
+Plot(IIf(Itoday == Day(), ICML1,Null), "ICML1",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICML2,Null), "ICML2",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICML3,Null), "ICML3",colorBlue,styleDashed+styleNoRescale|styleThick);
+Plot(IIf(Itoday == Day(), ICML4,Null), "ICML4",colorBlue,styleDashed+styleNoRescale);
+Plot(IIf(Itoday == Day(), ICML5,Null), "ICML5",colorBlue,styleDashed+styleNoRescale);
+}
+
+
+
+
+ICMpvthISTORY = ParamToggle("CAM INTRADAY 125 MIN Pivots L3/H3 HISTORY","Show|Hide",1);
+IToday = LastValue(Day());
+if(ICMpvthISTORY==1){
+
+
+Plot(ICMH3, "",colorLavender,styleDots+styleNoRescale|stylethick);
+Plot(ICML3, "",colorLavender,styledots+styleNoRescale|styleThick);
+//Plot(CMH4, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CML4, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CMH5, "",colorWhite,styleDashed+styleNoRescale);
+//Plot(CML5, "",colorWhite,styleDashed+styleNoRescale);
+
+
+}
+
+
+
+
+WMpvt = ParamToggle("CAM WEEKLY Pivot 4 LAYERS","Show|Hide",1);
+Today = LastValue(Day());
+LVBI = LastVisibleValue(BarIndex());
+
+if(WMpvt==1){
+
+
+//Plot(IIf(today == Day(), WCMH5,Null), "CMH5",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), WCMH4,Null), "CMH4",colorGold,styleDots+styleNoRescale);
+//Plot(IIf(today == Day(), WCMH3,Null), "CMH3",colorBlue,styleDots+styleNoRescale);
+
+//Plot(IIf(today == Day(), WCML3,Null), "CML3",colorBlue,styleDots+styleNoRescale);
+Plot(IIf(today == Day(), WCML4,Null), "CML4",colorBlue,styleDots+styleNoRescale);
+//Plot(IIf(today == Day(), WCML5,Null), "CML5",colorBlue,styleDots+styleNoRescale);
+
+//PlotOHLC(WCMH3, WCMH3, WCML3, WCML3, "", colorPaleBlue, styleCloud|styleNoLabel, Null, Null, 0, -5, 1);
+
+}
+
+
+
+Nxtdaypvt = ParamToggle("NEXT DAY CAM REF L3/H3","Show|Hide",1);
+
+
+
+DayChange = DateNum() != Ref( DateNum(), -1 );
+lastDayBegin = LastValue( ValueWhen( DayChange, BarIndex() ) );
+
+extension = 500; // how many bars to right extend
+
+if(Nxtdaypvt==1){
+
+GfxSetCoordsMode( 1 );
+GfxSelectPen( colorYellow );
+GfxMoveTo( lastDayBegin, TDTCMH3 );
+GfxLineTo( lastDayBegin + extension, TDTCMH3 );
+GfxMoveTo( lastDayBegin, TDTCML3 );
+GfxLineTo( lastDayBegin + extension, TDTCML3 );
+GfxMoveTo( lastDayBegin, TDTCMH4 );
+GfxLineTo( lastDayBegin + extension, TDTCMH4 );
+GfxMoveTo( lastDayBegin, TDTCML4 );
+GfxLineTo( lastDayBegin + extension, TDTCML4 );
+//GfxMoveTo( lastDayBegin, TDTCMH5 );
+//GfxLineTo( lastDayBegin + extension, TDTCMH5 );
+//GfxMoveTo( lastDayBegin, TDTCML5 );
+//GfxLineTo( lastDayBegin + extension, TDTCML5 );
+
+}
+//Plot( C, "Price", colorDefault, styleCandle );
+
+
+_SECTION_END();
+
+
+/////// SHORT CODES
+// CHART
+
+_SECTION_BEGIN("25_DR");
+hi = Max(TimeFrameGetPrice("H",in1Minute * 150,-1),TimeFrameGetPrice("H",in1Minute * 150,-2)); //  Ref(HHV(H,dys),0);
+lo = Min(TimeFrameGetPrice("L", in1Minute * 150,-1),TimeFrameGetPrice("L",in1Minute * 150,-2)); //Ref(LLV(L,dys),0);
+DR = (hi-lo)*100/lo;
+AADR = 0.64; // 0.75; // Optimize("AADRR",0.65,0.5,1,0.01);
+AADRA = 18; //11; // Optimize("AADRMA",10,5,30,1);
+//AADR =  Optimize("AADRR",0.65,0.5,1,0.01);
+//AADRA =  Optimize("AADRMA",10,5,30,1);
+ADR10 = MA(dr,AADRA);
+ADR5 = MA(dr,5);
+EX = ADR10 * 1.25;
+CM = ADR10 * AADR;
+DR_COND = DR < CM AND DR/CM > 0;
+_SECTION_END();
+
+_SECTION_BEGIN("20_VWAP");
+//function Lastthursday()
+//{
+  //  Daysinmonth = IIf( Month() == 1 OR Month() == 3 OR Month() == 5 OR Month() == 7 OR Month() == 8 OR Month() == 10 OR Month() == 12, 31, 30 );
+   // Daysinmonthfeb = IIf( Year() % 4 == 0 AND Year() % 100 != 0, 29, 28 );
+   // Daysinmonthfinal = IIf( Month() == 2, Daysinmonthfeb, Daysinmonth );
+    //returnvalue = IIf( Daysinmonthfinal - Day() < 7 AND DayOfWeek() == 4, 1, IIf( Daysinmonthfinal - Day() < 8 AND DayOfWeek() == 3 AND Ref( DayOfWeek(), 1 ) != 4 AND Day() != Daysinmonthfinal , 1, 0 ) );
+    //return returnvalue;
+//}
+
+
+Bars_so_far_today = 1 + BarsSince( Day() != Ref(Day(), -1));
+StartBar = ValueWhen(TimeNum() == 091500, BarIndex());
+TodayVolume = Sum(V,Bars_so_far_today);
+average = (H+L+C)/3;
+IIf (BarIndex() >= StartBar, VWAP = Sum (average * V, Bars_so_far_today  ) / TodayVolume,0);
+IIf (BarIndex() >= StartBar, VWAPH = Sum (H * V, Bars_so_far_today  ) / TodayVolume,0);
+IIf (BarIndex() >= StartBar, VWAPL = Sum (L * V, Bars_so_far_today  ) / TodayVolume,0);
+IIf (BarIndex() >= StartBar, VWAPC = Sum (C * V, Bars_so_far_today  ) / TodayVolume,0);
+vwap3sdup = Cross(H, VWAP+3*StDev(abs(vwap-C),300));
+vwap3sddn = Cross(VWAP-3*StDev(abs(vwap-C),300),L);
+
+_SECTION_END();
+
+// PREV VWAP LINE
+
+PREVday = Day() ==  Ref(Day(),-1) ;
+TODAY = LastValue(Day());
+
+PDVWAP = ValueWhen(PREVDAY AND TimeNum()==152500,VWAP);
+IIf(TODAY == Day(),Plot(PDVWAP,"PD_VWAP",colorWhite,styleDots|styleThick,WIDTH = 400),Null);
+
+
+
+
+
+
+// mtf rsi
+
+_SECTION_BEGIN("26_MTF RSI");
+TimeFrameSet(inDaily);
+RSI_daily=rsi(20);
+EMA_DAILY = EMA(C,200);
+TimeFrameRestore();
+
+TimeFrameSet(inHourly);
+RSI_hourly=rsi(20);
+EMA_HOURLY=EMA(C,200);
+TimeFrameRestore();
+
+TimeFrameSet(in15Minute);
+RSI_fmin=rsi(20);
+EMA_FMIN = EMA(C,200);
+TimeFrameRestore();
+_SECTION_END();
+
+
+// PRICE AND SLOPE DISPLAY IN CHART
+
+_SECTION_BEGIN("27_Show Parameters");
+ShowParameters=ParamList("Show Parameters ","Yes|No");
+if(ShowParameters == "Yes")
+{
+
+FS=Param("Font Size",9,11,100,1);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor( ParamColor("Color",colorPink) ); 
+Hor=Param("Horizontal Position",145,1,1200,1);
+Ver=Param("Vertical Position",12,1,830,1);
+GfxTextOut("PIVOT PARAMETERS ", Hor , Ver+5 );
+
+
+FS=Param("Font Size",9,11,100,1);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor( ParamColor("Color",colorAqua) ); 
+Hor=Param("Horizontal Position",145,1,1200,1);
+Ver=Param("Vertical Position",12,1,830,1);
+GfxTextOut("PRICE: "+C, Hor , Ver+20 );
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Daily PIVOT CPR_tom" + "(CMP :" + C + ") : "+Tp + " " + " / " +Tdprup + " " + " / " + Tdprdn, Hor , Ver+40 );
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Daily PIVOT RES_tom" + "(CMP :" + C + ") : "+tR1 + " " + " / " +tR2 + " " + " / " +tR3 + " " + " / " +tr4, Hor , Ver+60 );
+
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Daily PIVOT SUPP_tom" + "(CMP :" + C + ") : "+tS1 + " " + " / " +tS2 + " " + " / " +tS3 + " " + " / " +tS4, Hor , Ver+80 );
+
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Weekly PIVOT CPR" + "(CMP :" + C + ") : "+Wpp + " " + " / " +wprup + " " + " / " + wprdn, Hor , Ver+120 );
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Weekly PIVOT RES" + "(CMP :" + C + ") : "+wR1 + " " + " / " +wR2 + " " + " / " +wR3 + " " + " / " +wr4, Hor , Ver+140 );
+
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Weekly PIVOT SUPP" + "(CMP :" + C + ") : "+wS1 + " " + " / " +wS2 + " " + " / " +wS3 + " " + " / " +wS4, Hor , Ver+160 );
+
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Monthly PIVOT CPR" + "(CMP :" + C + ") : "+Mpp + " " + " / " +mprup + " " + " / " + mprdn, Hor , Ver+200 );
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Monthly PIVOT RES" + "(CMP :" + C + ") : "+mR1 + " " + " / " +mR2 + " " + " / " +mR3 + " " + " / " +mr4, Hor , Ver+220 );
+
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("Monthly PIVOT SUPP" + "(CMP :" + C + ") : "+mS1 + " " + " / " +mS2 + " " + " / " +mS3 + " " + " / " +mS4, Hor , Ver+240 );
+
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+//GfxTextOut("VWAP_PD" + "(CMP :" + C + ") : "+PDVWAP, Hor , Ver+260 );
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+GfxTextOut("PDL_PDH_TOM" + "(CMP :" + C +") : "+tL1 + " " + " / " + tH1, Hor , Ver+280 );
+
+//xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 9, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorAqua) ); 
+//GfxTextOut("VWAP_DAILY" + "(CMP :" + C + ") : "+VWAPD, Hor , Ver+280 );
+
+
+
+
+}
+
+
+
+_SECTION_BEGIN("28_WICK REVERSAL");
+
+WM = Param("Wick Multiplier",2.5,2.5,3.5,0,25);
+BP = Param("Body Percentage",0.50,0,0.35,0.05);
+
+AvgRange = MA((Ref(H,-1)-Ref(L,-1)),13);
+RedBarFirst = Ref(O,-1) > Ref(C,-1);
+Cond1 = (Ref(H,-1)-Ref(L,-1)) > 2 * AvgRange  ;
+
+GreenBarFirst = Ref(c,-1) > Ref(o,-1); 
+Cond2 = (Ref(H,-1)-Ref(L,-1)) > 2 * AvgRange;
+
+
+FirstBarBody = abs(Ref(C,-1)-Ref(O,-1)) > 0.50 * (Ref(H,-1)-Ref(L,-1)) AND abs(Ref(C,-1)-Ref(O,-1)) < 0.95 * (Ref(H,-1)-Ref(L,-1));
+sizevsprevbars = abs(C-O) > EMA(abs(C-O),10);
+SecondGreenBar = C > O AND L > Ref(L,-1) AND C-O > 0.50*(H-L);
+SecondRedBar = C < O AND H < Ref(H,-1) AND O-C > 0.50*(H-L);
+
+ERSBull = RedBarFirst AND Cond1 AND SecondGreenBar AND FirstBarBody AND sizevsprevbars; //AND L > Ref(L,-1);
+ERSBear = GreenBarFirst AND Cond2 AND SecondRedBar AND FirstBarBody AND sizevsprevbars; // AND H < Ref(H,-1);
+
+BuyERS = ersbull;
+ShortERS = ersbear;
+
+WRA1 = C>O;
+WRB1 = (O-L >= (C-O) * WM);
+WRC1 = (H-C <= (H-L) * BP);
+
+WRA2 = C<O;
+WRB2 = (C-L >= (O-C)*WM);
+WRC2 = (H-C <= (H-L)*BP);
+
+WRA3 = C=O AND !(C=H);
+WRB3 = (H-L >= (H-C)*WM);
+WRC3 = (H-C <= (H-L)*BP);
+
+WRA4 = (O=H AND C=H);
+WRB4 = (H-L >= MA(H-L,50));
+
+WR = (WRA1 AND WRB1 AND WRC1) OR (WRA2 AND WRB2 AND WRC2);// OR (WRA3 AND WRB3 AND WRC3) OR (WRA4 AND WRB4);
+dist = 1*ATR(10); 
+ShowERS=ParamList("Show ERS ","Yes|No");
+if(ShowERS == "Yes")
+{
+
+for( i = 0; i < BarCount; i++ ) 
+{ 
+if( BuyERS[i] ) PlotText( "ERSbULL@" + C[ i ], i, L[ i ]-dist[i], colorGreen ); 
+if( ShortERS[i] ) PlotText( "ERSBEAR@" + C[ i ], i, H[ i ]+dist[i], colorRed, colorYellow ); 
+} 
+}
+//PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+//PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+//PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+//PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+//PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+//PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+
+
+
+_SECTION_END();
+
+
+
+_SECTION_BEGIN("29_pivot ema");
+
+// pivots based on hlc since start of the day
+
+STARTTIME = 091500;
+tn = TimeNum();
+STARTBAR = TN == STARTTIME;
+TRRH1 = HighestSince(STARTBAR,High);
+TRRL1 = LOWESTSince(STARTBAR,LOW);
+TRRC1 = Ref(C,-1);
+TRRP = ( TRRH1+ TRRL1 + TRRC1 )/3;
+
+// pivots based on hlc based on each candle
+rp = (H+L+C)/3;
+
+// plot
+//RPIVOTS = ParamToggle("Running Pivots based on HLC since start of the day Vs candle pivots","Show|Hide",1);
+//if(Rpivots==1){
+//Plot(TRRP, "",colorYellow,styleLine);
+//Plot(rp,"",colorGreen,styleLine);
+//Plot(EMA(trrp,50),"",colorYellow,styleDashed);
+//}
+//RRPIVOTS = ParamToggle("Running Pivots based on HLC of each candle","Show|Hide",1);
+//if(rrpivots == 1){
+//Plot(rp,"",colorGreen,styleLine);
+//Plot(EMA(rp,50),"",colorGreen,styleDashed);
+//}
+_SECTION_END();
+
+
+
+_SECTION_BEGIN("30_PIVOTBOSS pwidth");
+H1 = TimeFrameGetPrice("H", inDaily, -1);		// yesterdays high
+L1 = TimeFrameGetPrice("L", inDaily, -1);		//				low
+C1= TimeFrameGetPrice("C", inDaily, -1);		//				close
+Pp = ( H1+ L1 + C1 )/3;
+BC = (H1+L1)/2;
+TC = (Pp-BC)+Pp;
+PR = IIf(BC>TC,(BC-TC)*100/TC,(TC-BC)*100/BC);
+
+Ht = TimeFrameGetPrice("H", inDaily, 0);		// yesterdays high
+Lt = TimeFrameGetPrice("L", inDaily, 0);		//				low
+Ct= TimeFrameGetPrice("C", inDaily, 0);	
+Ppt = ( Ht+ Lt + Ct )/3;
+BCt = (Ht+Lt)/2;
+TCt = (Ppt-BCt)+Ppt;
+PRt = IIf(BCt>TCt,(BCt-TCt)*100/TCt,(TCt-BCt)*100/BCt);
+prtema = EMA(prt,1500);
+_SECTION_END();
+
+
+
+//// TRENDS
+// To visualize Hourly , Daily, Weekly, and Monthly  Trend 
+
+_SECTION_BEGIN("31_MTF_TRENDS");
+ 
+ 
+ fdayhH = TimeFrameGetPrice("H",in15Minute,-1);
+fdayhL = TimeFrameGetPrice("L", in15Minute,-1);
+ 
+tdayhH  = TimeFrameGetPrice("H", inHourly, -1);	
+tdayhL = TimeFrameGetPrice("L", inHourly, -1);
+ 
+yDayH = TimeFrameGetPrice("H", inDaily, -1);	  
+yDayL = TimeFrameGetPrice("L", inDaily, -1);	
+ 
+ywH = 	TimeFrameGetPrice("H", inWeekly, -1);	  
+ywL = 	TimeFrameGetPrice("L", inWeekly, -1);
+	
+yMH = 	TimeFrameGetPrice("H", inMonthly, -1);	  
+yML = 	TimeFrameGetPrice("L", inMonthly, -1);	  
+
+
+ML = MACD(12,26);
+SL = Signal(12,26,9);
+MACDH = ML - SL;
+Bullish = EMA(C,13) > Ref(EMA(C,13),-1) AND MACDH > Ref(MACDH,-1);
+Bearish = EMA(C,13) < Ref(EMA(C,13),-1) AND MACDH < Ref(MACDH,-1);
+ribboncolor = IIf(Bullish,colorYellow,IIf(bearish,colorRed,colorBlue));
+
+
+
+TimeFrameSet( inHourly );
+hMACDH = MACD( 12, 26 ) - Signal( 12, 26, 9 ); 
+hEMA = EMA(C,26);
+hBullish = hEMA > Ref(hEMA,-1) AND hMACDH > Ref(hMACDH,-1) ;
+hBearish = hEMA < Ref(hEMA,-1) AND hMACDH < Ref(hMACDH,-1) ;
+phorBullish = Ref(hEMA,-1) > Ref(hEMA,-2) or Ref(hMACDH,-1) > Ref(hMACDH,-2) ;
+phorBearish = Ref(hEMA,-1) < Ref(hEMA,-2) or Ref(hMACDH,-1) < Ref(hMACDH,-2) ;
+phandBullish = Ref(hEMA,-1) > Ref(hEMA,-2) and Ref(hMACDH,-1) > Ref(hMACDH,-2) ;
+phandBearish = Ref(hEMA,-1) < Ref(hEMA,-2) and Ref(hMACDH,-1) < Ref(hMACDH,-2) ;
+
+
+TimeFrameRestore();
+hBullish = TimeFrameExpand(hbullish,inHourly,expandlast);
+hBearish = TimeFrameExpand(hbearish,inHourly,expandlast);
+phBullish = TimeFrameExpand(phandbullish,inHourly,expandlast);
+phBearish = TimeFrameExpand(phandbearish,inHourly,expandlast);
+
+
+ribboncolorh = IIf(hBullish,colorYellow,IIf(hbearish,colorRed,colorBlue));
+
+
+
+TimeFrameSet( inWeekly );
+WMACDH = MACD( 12, 26 ) - Signal( 12, 26, 9 ); 
+WEMA = EMA(C,26);
+WBullish = WEMA > Ref(WEMA,-1) AND WMACDH > Ref(WMACDH,-1) ;
+WBearish = WEMA < Ref(WEMA,-1) AND WMACDH < Ref(WMACDH,-1) ;
+TimeFrameRestore();
+WBullish = TimeFrameExpand(Wbullish,inWeekly,expandlast);
+WBearish = TimeFrameExpand(Wbearish,inWeekly,expandlast);
+ribboncolorw = IIf(WBullish,colorYellow,IIf(Wbearish,colorRed,colorBlue));
+
+
+TimeFrameSet( inDaily );
+dMACDH = MACD( 12, 26 ) - Signal( 12, 26, 9 ); 
+d_EMA = EMA(C,26);
+dBullish = d_EMA > Ref(d_EMA,-1) AND dMACDH > Ref(dMACDH,-1) ;
+dBearish = d_EMA < Ref(d_EMA,-1) AND dMACDH < Ref(dMACDH,-1) ;
+TimeFrameRestore();
+dBullish = TimeFrameExpand(dbullish,inDaily,expandlast);
+dBearish = TimeFrameExpand(dbearish,inDaily,expandlast);
+ribboncolord = IIf(dBullish,colorYellow,IIf(dbearish,colorRed,colorBlue));
+
+
+
+fuptrend = bullish; //C > fdayhH;
+fdntrend = bearish; //C < fdayhL;
+
+hUptrend = hbullish; //C > tdayhH;
+hdntrend = Hbearish; //C < tdayhL;
+
+dUptrend = dbullish; //C > yDayH;
+ddntrend = dbearish; //C < yDayL;
+
+WUptrend = wbullish; //C > ywH;
+Wdntrend = wbearish;//C < ywL;
+
+//MUptrend = mbullish; //C > yMH;
+//Mdntrend = mbearish; //C < yML;
+
+UptrendF = Flip(FUptrend, FDntrend);
+UptrendH = Flip( HUptrend, HDntrend);
+UptrendD = Flip( DUptrend, Ddntrend);
+UptrendW = Flip( WUptrend, WDntrend);
+//UptrendM = Flip( MUptrend, MDntrend);
+
+
+styleR = styleOwnScale | styleArea |styleNoLabel|styleNoTitle ;
+
+
+
+TrendR = ParamToggle("PLOT MTF TREND RIBBONS","Show|Hide",1);
+if(TrendR==1){
+
+
+riboncodf = IIf( Uptrendf, colorblue, colorRed );
+Plot( 1.1, "fRibbon", ribboncolor, styleR , -25, 100, 0, 2, 1 );
+
+
+riboncodH = IIf( UptrendH, colorBlue, colorRed );
+Plot( 1.1, "HRibbon", ribboncolorH, styleR , -20, 100, 0, 2, 1 );
+
+riboncodD = IIf( UptrendD, colorBlue, colorRed );
+Plot( 1.1, "DRibbon", ribboncolorD, styleR, -15, 100, 0, 2, 1 );
+ 
+riboncodW = IIf( UptrendW, colorBlue, colorRed );
+Plot( 1.1, "WRibbon", ribboncolorW, styleR , -10, 100, 0, 2, 1 );
+
+//riboncodM = IIf( UptrendM, colorBlue, colorRed );
+//Plot( 1.1, "MRibbon", ribboncolorM, styleR , -5, 100, 0, 2, 1 );
+}
+
+// Plotting Lines -- Daily ( Green    )-- Weekly ( Yellow) -- Monthly ( Red) 
+
+//styleP = styleDots|styleNoRescale|styleNoTitle|styleNoLabel;
+ 
+//TrendL = ParamToggle("PLOT MTF HIGH LOWS","Show|Hide",1);
+//if(Trendl==1){
+ 
+ //Plot( fDayhh, "15 min High ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+//Plot( fDayhl, "15 min Low ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+
+
+ //Plot( tDayhh, "Hourly High ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+//Plot( tDayhl, "Hourly Low ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+
+//Plot( yDayH, "Yesterday High ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+//Plot( yDayL, "Yesterday Low ", colorGreen, styleP, Null, Null, 0, 0, 1 );
+
+//Plot( ywH, "Previous Week  High ", colorYellow, styleP, Null, Null, 0, 0, 2 );
+//Plot( ywL, "Previous Week Low ", colorYellow, styleP, Null, Null, 0, 0, 2 );
+
+//Plot( yMH, "Previous Month High ", colorRed, styleP, Null, Null, 0, 0, 3 );
+//Plot( yML, "Previous Month Low ", colorRed, styleP, Null, Null, 0, 0, 3 );
+
+//Plot( 20, "",cmDefault  , styleArea|styleOwnScale|styleNoLabel, 1 ,100,0, 1,1 );
+
+// Displaying text next to ribbons 
+//GfxTextOut( "15MinTrend " , status("Pxwidth")/1.05, Status("Pxheight")/1.30);
+//GfxTextOut( "Hrly_Trend " , status("Pxwidth")/1.05, Status("Pxheight")/1.25 );
+//GfxTextOut( "Dly_Trend " , status("Pxwidth")/1.05, Status("Pxheight")/1.20 );
+//GfxTextOut( "Wkly_Trend " , status("Pxwidth")/1.05, Status("Pxheight")/1.15 );
+//GfxTextOut( "Mnthly_Trend " , status("Pxwidth")/1.05, Status("Pxheight")/1.10 );
+//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_SECTION_BEGIN("32_TRADE");
+
+
+
+
+
+// PATTERN A - BREAKAWAY PLAY
+// long entry
+// 1) todays open should be greater than yesterdays close
+// 2) low of the candle should be above pdh 
+// 3) low of the candle should be above R1
+// 4) close is greater than intraday bimodal pivot
+// 5) close is greater than running pivot
+// 6) close is greater than cam h1
+// 7) entry time should be before 0945.
+// 8) squarte when high touches r7 or high falls below 10 ema or at close.
+
+// short entry
+// 1) todays open should be lesser than yesterdays close
+// 2) high of the candle should be below pdl
+// 3) high of the candle should be below S1
+// 4) entry time should be before 0945
+// 5-7) opposite to buy
+// 8) square when low touches s7 or low goes above 10 ema or at close.
+
+R5 = R4+(R3-R2);
+R6 = R5 + (R4-R3);
+R7 = R6 + (R5-R4);
+S5 = S4+(S3-S2);
+S6 = S5 + (S4-S3);
+S7 = S6 + (S5-24);
+
+// STRATEGY1 = BAP STRATEGY COND
+//SetPositionSize( 800, spsShares ); // 100 shares by default 
+//test for backtest
+
+
+
+STRATEGY = ParamList( "STRATEGY", "No_Strategy|MTF_TREND|DMRPCross|MONTHLY_PIVOT_CROSS|SWINGHIGH_SWINGLOW|PEMABREAKOUT|20_200ema|ComboBreakOut|GPZcross|BreakAwayPlay(BAP)|RunningPivotCross|caml3h3 reversal|SecondSession BAP (SSBAP)",0 );
+IV = TDPRUP < DPRUP AND TDPRDN > DPRDN;
+
+//SetPositionSize( 120, spsShares ); 
+
+
+if(strategy == "MTF_TREND")
+{
+
+Buy =  HBULLISH AND (phorbearish OR phandbearish) AND TimeNum() > 093000 AND TimeNum() < 150000 AND C > O;
+Short =  HBEARISH AND (phandbullish OR phorbullish) AND TimeNum() > 093000 AND TimeNum() < 150000   AND C < O; 
+Sell = !HBULLISH OR TimeNum() == 151500;// OR TimeNum() == 151500; 
+Cover = !HBEARISH OR TimeNum() == 151500; 
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover) ;
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+}
+
+if(strategy == "No_Strategy")
+{
+
+Buy =  Null;//  AND TimeNum() > 093000 AND TimeNum() < 150000 ;
+Short =  Null;//  AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr < 0.75  ; 
+Sell = Null;// OR TimeNum() == 151500; 
+Cover = Null;// OR TimeNum() == 151500; 
+}
+
+
+
+
+if(strategy == "DMRPCross")
+{
+
+Buy =  Cross( trrp,trrmp);//  AND TimeNum() > 093000 AND TimeNum() < 150000 ;
+Short =  Cross(trrmp,trrp);//  AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr < 0.75  ; 
+Sell = (Cross(trrP,H));// OR TimeNum() == 151500; 
+Cover = (Cross( L , trrP));// OR TimeNum() == 151500; 
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover) ;
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+}
+
+
+if(strategy == "MONTHLY_PIVOT_CROSS")
+{
+//SW1 = H < Ref(H,-2) AND Ref(H,-1) < Ref(H,-2);
+//SW11 = Ref(H,-2) > Ref(H,-3) AND Ref(H,-2) > Ref(H,-4);
+//SWINGHIGH = SW1 AND SW11;
+
+//SW2 = L > Ref(L,-2) AND Ref(L,-1) > Ref(L,-2);
+//SW22 = Ref(L,-2) < Ref(L,-3) AND Ref(L,-2) < Ref(L,-4);
+//SWINGLOW = SW2 AND SW22;
+Buy = Cross(L,trrmp) AND TimeNum() > 091500 AND TimeNum() < 150000;
+Short = Cross(trrmp,H) AND TimeNum() > 091500 AND TimeNum() < 150000;
+Sell = Cross(trrmp,H) OR TimeNum() == 151500;
+Cover = Cross(L,trrmp) OR TimeNum() == 151500;
+
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+}
+
+
+
+if(strategy == "SWINGHIGH_SWINGLOW")
+{
+//SW1 = H < Ref(H,-2) AND Ref(H,-1) < Ref(H,-2);
+//SW11 = Ref(H,-2) > Ref(H,-3) AND Ref(H,-2) > Ref(H,-4);
+//SWINGHIGH = SW1 AND SW11;
+
+//SW2 = L > Ref(L,-2) AND Ref(L,-1) > Ref(L,-2);
+//SW22 = Ref(L,-2) < Ref(L,-3) AND Ref(L,-2) < Ref(L,-4);
+//SWINGLOW = SW2 AND SW22;
+sw1 = H > Ref(H,-1) AND H > Ref(H,-2);
+sw11 = H > Ref(H,1) AND H > Ref(H,2);
+sw2 = L < Ref(L,-1) AND L < Ref(L,-2);
+sw22 = L < Ref(L,1) AND L < Ref(L,2);
+swinghigh = sw1 AND sw11;
+swinglow = sw2 AND sw22;
+Buy = swinglow;
+Short = swinghigh;
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+}
+
+
+if(strategy == "PEMABREAKOUT")
+{
+Buy = (Cross(C,EMA((H+L+C)/3,50)) OR Cross(C,EMA((H+L+C)/3,200))) AND Cross(C,pp) AND TimeNum() > 091500 AND TimeNum() < 150000;
+Short = (Cross(EMA((H+L+C)/3,50),C) OR Cross(EMA((H+L+C)/3,200),C)) AND Cross(pp,C) AND TimeNum() > 091500 AND TimeNum() < 150000;
+Sell = Cross(pp,C) OR TimeNum() == 151500;
+Cover = Cross(C,PP) OR TimeNum() == 151500;
+
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+//N = 1;
+//dn = DateNum();
+//newday = dn != Ref(dn,-1);
+//Buy = Buy AND Sum(Buy,BarsSince(newday) + 1) <=N;
+//Short = Short AND Sum(Short,BarsSince(newday) + 1) <= N;
+//sell = Sell AND Sum(sell,BarsSince(newday) + 1) <=N;
+//Short = cover AND Sum(cover,BarsSince(newday) + 1) <= N;
+
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+}
+
+if(strategy == "BreakAwayPlay(BAP)")
+{
+Buy =   (( L > r1 AND L > h1 AND ((TimeNum() > 093000 and TimeNum() < 110000) OR (TimeNum() >= 093000 AND TimeNum() < 110000)) ) AND C > IPP AND C > TRRP AND C > CMH1) OR ((Cross(L,wpp) OR Cross(L,mpp)) AND TimeNum() >= 093000 AND TimeNum() < 110000) AND IV AND prt <0.65*(EMA(prt,1200));// AND pr < 0.10;//AND H > Ref(HHV(H,5),-1) ;// AND L > IDPRUP AND rp >  Max(trrbc,trrtc); //trrp ;// AND pr < 0.25;
+Sell = Cross(H,R7) OR TimeNum() == 150000 OR Cross(EMA(C,50),H) OR Cross(itdprdn,c) OR Cross(trrp,h) OR Cross(r3,H);// OR Cross(H1,H);
+Short =  ( H < s1 AND H < l1  AND  ((TimeNum() > 093000 and TimeNum() < 110000) OR (TimeNum() > 093000 and TimeNum() < 110000)) ) AND  C < IPP AND C < TRRP AND C<CMl1 OR ((Cross(wpp,H) OR Cross(mpp,H)) AND TimeNum() > 093000 and TimeNum() < 110000) AND IV AND prt <0.65*(EMA(prt,1200));// AND pr < 0.10;// AND L < Ref(LLV(L,5),-1); //AND H < IDPRDN AND rp < Min(trrbc,trrtc); // trrp;// AND pr < 0.25;
+Cover = Cross(S7,L) OR TimeNum() == 150000  OR Cross(L,EMA(C,50)) OR Cross(C,itdprup) OR Cross(L,trrp) OR Cross(L,s3);// OR Cross(L,L1);
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+//N = 1;
+//dn = DateNum();
+//newday = dn != Ref(dn,-1);
+//Buy = Buy AND Sum(Buy,BarsSince(newday) + 1) <=N;
+//Short = Short AND Sum(Short,BarsSince(newday) + 1) <= N;
+//sell = Sell AND Sum(sell,BarsSince(newday) + 1) <=N;
+//Short = cover AND Sum(cover,BarsSince(newday) + 1) <= N;
+
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+
+}
+
+if(strategy == "20_200ema")
+{
+
+cond1 = Cross(l,EMA(C,200)) AND Ref(L,-1) < Ref(EMA(C,200),-1) AND TimeNum() >= 091500 AND TimeNum() < 143000;
+cond2 = Cross(l,EMA(C,100)) AND Ref(L,-1) < Ref(EMA(C,200),-1) AND TimeNum() >= 091500 AND TimeNum() < 143000;
+cond3 = Cross(EMA(C,20),h) or TimeNum() == 150000;
+cond4 = Cross(EMA(C,100),h) AND Ref(h,-1) > Ref(EMA(C,200),-1) AND TimeNum() >=091500 AND TimeNum() < 143000;
+cond5 = Cross(l,EMA(C,20)) OR TimeNum() == 150000;
+
+Buy =  cond2 ;
+Sell = cond3;
+Short =  cond4;
+Cover = cond5;
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+
+}
+
+
+
+if(strategy == "ComboBreakOut")
+{
+// combo breakout 
+// long cond
+// 1)  monthly cpr engulfing weekly and daily cpr
+// 2)  low of candle crosses monthly upper cpr
+// 3)  square if high touches weekly r2 or high of candle drops below monthly upper cpr or at close.
+// short cond
+// 1) monthly cpr engulfing weekly and daily cpr
+// 2) high of candle cross monthly lower cpr
+// 3) square if low touches weekly s2 or low of candle goes above monthly lower cpr or at close.
+
+cond1 = (mprup  > dprup AND mprdn < dprdn AND mprup > wprup AND mprdn < wprdn);
+cond2 = Cross(l,mprup) AND TimeNum() > 091500 AND TimeNum() < 143000;// AND C > o;
+cond3 = Cross(mprdn,h) AND TimeNum() > 091500 AND TimeNum() < 143000;// AND C < o;
+cond4 = Cross(H,wr2) OR Cross(mprup,h) or TimeNum() == 150000;
+cond5 = Cross(ws2,L) OR Cross(l,mprdn) OR TimeNum() == 150000;
+Buy =  cond2 ;
+Sell = cond4;
+Short =  cond3;
+Cover = cond5;
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+
+}
+
+
+if(strategy == "GPZcross")
+{
+Buy =   Cross(c,pp) AND Cross(c,cmh3) AND TimeNum() > 093000 and TimeNum() < 144500 AND C > EMA(C,30) ;
+Sell = Cross(H,R1) OR Cross(H,h1) OR TimeNum() == 150000 OR Cross(EMA(C,25),H) OR Cross(pp,H) OR Cross(cmh3,H);// OR Cross(H1,H);
+Short =  Cross(pp,c) AND Cross(cml3,c) AND TimeNum() > 093000 and TimeNum() < 144500 AND C < EMA(C,30) ;
+Cover = Cross(s1,l) OR Cross(l1,L) OR TimeNum() == 150000 OR Cross(L,EMA(C,25)) OR Cross(L,pp) OR Cross(L,cml3);// OR Cross(L,L1);
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+//N = 1;
+//dn = DateNum();
+//newday = dn != Ref(dn,-1);
+//Buy = Buy AND Sum(Buy,BarsSince(newday) + 1) <=N;
+//Short = Short AND Sum(Short,BarsSince(newday) + 1) <= N;
+//sell = Sell AND Sum(sell,BarsSince(newday) + 1) <=N;
+//Short = cover AND Sum(cover,BarsSince(newday) + 1) <= N;
+
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+
+}
+
+
+
+// STRATEGY2 = RUNNING PIVOT CROSS STRATEGY.
+//PWT = Optimize("PWT",0.75,0.2,1.5,0.1);
+
+if(strategy == "RunningPivotCross")
+{
+
+Buy =  (Cross( L , trrP) AND C > EMA(C,20)) AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr  < 0.75 ;
+Short =  (Cross(trrP,H) AND C < EMA(C,20)) AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr < 0.75  ; 
+Sell = (Cross(trrP,H) AND C < EMA(C,20)) OR TimeNum() == 151500 OR Cross(0.5*(TRRP + trrwp), H); 
+Cover = (Cross( L , trrP) AND C > EMA(C,20)) OR TimeNum() == 151500 OR Cross(L, 0.5*( TRRP + trrwp)); 
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover) ;
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+}
+
+
+if(strategy == "caml3h3 reversal")
+{
+Buy = Cross(L,cml3) AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr > 0.75 AND l > l1;
+Short = Cross(cmh3,H) AND TimeNum() > 093000 AND TimeNum() < 150000 AND pr > 0.75 AND h < h1;
+Sell = Cross(H,cmh3) OR TimeNum() == 151500;
+Cover = Cross(cml3,L) OR TimeNum() == 151500;
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+
+
+}
+
+
+if(strategy == "SecondSession BAP (SSBAP)")
+{
+
+
+Buy = l > 0.5*(ipp+ir1)  AND TimeNum() > 130000 AND TimeNum() < 150000 AND H > Ref(HHV(H,10),-1);// AND C>o;
+Short = h < 0.5*(ipp+is1)  AND TimeNum() > 130000 AND TimeNum() < 150000 AND L < Ref(LLV(L,10),-1);// AND C < o;
+Sell = H < idprdn   OR TimeNum() == 152500;
+Cover = L > idprup  OR TimeNum() == 152500;
+
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+Short = ExRem(Short,cover);
+Cover = ExRem(Cover,Short);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0, L, Offset=-40);
+PlotShapes(IIf(Buy, shapeSquare, shapeNone),colorBlueGrey, 0,L, Offset=-50); 
+PlotShapes(IIf(Buy, shapeHollowUpArrow, shapeNone),colorWhite, 0,L, Offset=-45); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0, H, Offset=40); 
+PlotShapes(IIf(Short, shapeSquare, shapeNone),colorYellow, 0,H, Offset=50); 
+PlotShapes(IIf(Short, shapeHollowDownArrow, shapeNone),colorRed, 0,H, Offset=-45);
+PlotShapes(Sell*shapeStar,colorWhite,0,H,20);
+PlotShapes(Cover*shapeStar,colorWhite,0,L,-20);
+}
+
+////// GPZ
+
+gpzu = (cmh3 < dprup AND cmh3 > dprdn);
+gpzd = cml3 <dprup AND cml3 > dprdn;
+
+
+
+// monthly pivot pass through
+// long cond
+// 1) low of candle crosses monthly down cpr and bull candle
+// 2) square if high of candle touches monthly pivots or high goes below monthly down cpr or at close.
+// short cond
+// 1) high of candle crosses down monthly upper cpr and bear candle
+// 2) square if low of candle touches monthly pivots or low goes above monthly upper cpr or at close.
+
+//Buy = Cross(L,mprdn) AND C > O AND TimeNum() >= 091500 AND TimeNum() < 143000;
+//Sell = Cross(H,mpp) OR Cross(H,mprdn) OR TimeNum() == 152000;
+//Short = Cross(mprup,H) AND C < O AND TimeNum() >=091500 AND TimeNum() < 1433000;
+//Cover = Cross(mpp,L) OR Cross(L,mprup) OR TimeNum() == 152000;
+
+
+// covering rally
+// long cond
+// 1) today's pivots should be lower than yesterdays pivot (lower value relationship)
+// 2) today's first candle should be preferably open low candle.
+// 3) candle should cross daily upper cpr.
+// 4) exit at close or if candle drops below central pivots.
+
+// short cond
+// 1) today's pivot should be higher than yesterday's pivot (higher value relationship)
+// 2) today's first candle should be preferably open high candle.
+// 3) candle should cross down daily lower cpr.
+// 4) exit at close or if candle drops below central pivots.
+
+
+
+
+_SECTION_END();
+
+
+
+// GAPUP GAP DOWN
+
+
+
+NewDay = Day()!= Ref(Day(), -1);
+EndDay = (Day()!= Ref(Day(), 1));
+DayH = TimeFrameGetPrice("H", inDaily, -1);	// yesterdays high
+DayL = TimeFrameGetPrice("L", inDaily, -1);	//	low
+DayC = TimeFrameGetPrice("C", inDaily, -1);	//	close
+DayO=ValueWhen(NewDay,O,1);//Todays Open
+GPUP1=DayO>DayC;
+GPUP = GPUP1;// AND DAYO > (PP + R1)/2;// AND (DAYO-DAYH)/DAYH > 0.5;
+GPDN1=DayO<DayC;
+GPDN = GPDN1;// AND DAYO < (PP + S1)/2; //AND (DAYO-DAYL)/DAYL > 0.5;
+GPUP=ExRem(GPUP,EndDay);
+GPDN=ExRem(GPDN,EndDay);
+
+_SECTION_BEGIN("33_EXPLORATION");
+
+prwd = (tdprup - tdprdn)*100/tdprdn;
+// 2DAYS BACK PIVOT
+C2= TimeFrameGetPrice("C", inDaily, -2);		//				close
+H2= TimeFrameGetPrice("H", inDaily, -2);		//				close
+L2= TimeFrameGetPrice("L", inDaily, -2);		//				close
+Pp2 = ( H2+ L2 + C2 )/3;
+//S1 = L1-(H1-L1)*0.25;
+//S2 = L1-(H1-L1)*0.50;
+//S3 = L1-(H1-L1)*0.75;
+//S4 = L1-(H1-L1);
+BC2 = (H2+L2)/2;
+TC2 = (Pp2-BC2)+Pp2;
+PR2 = IIf(BC2>TC2,(BC2-TC2)*100/TC2,(TC2-BC2)*100/BC2);
+DPRUP2 = IIf(BC2>TC2,BC2,TC2);
+DPRDN2 = IIf(BC2<TC2,BC2,TC2);
+
+
+IV = TDPRUP < DPRUP AND TDPRDN > DPRDN AND TimeNum() == 152500;
+id = (th1 < h1 AND tl1 > l1) AND TimeNum() == 152500;
+BPVT = TP > tTP AND TDPRUP > TTDPRUP AND TDPRDN > TTDPRDN AND C > TDPRUP AND C > WPP AND C > TWP AND C > MPP AND C > TMP AND C > VWAPD;
+RPVT = TP < tTP AND TDPRUP < TTDPRUP AND TDPRDN < TTDPRDN AND C < TDPRDN AND C < WPP AND C < TWP AND C < MPP AND C < TMP AND C < VWAPD;
+
+tp_ttp = abs((tp-ttp)*100/Min(tp,ttp));
+
+
+
+// filter for 1day pivot and 2 day pivot relationship 1day > 2 day pivot and price > weekly pivot and price > monthly pivot and price > vwap AND VICE VERSA
+//Filter = (bpvt OR rpvt) AND TimeNum() == 152500;
+AddColumn(C,"CMP",1.2);
+AddColumn(tH1,"HIGH",1.4);
+AddColumn(tL1,"LOW",1.4);
+AddColumn((th1-tl1)*100/tl1,"hl range %",1.4);
+AddColumn(BPVT,"UP_1DpvtVS2Dpvt");
+AddColumn(RPVT,"DN_1DpvtVS2Dpvt");
+AddColumn(C>WPP AND C > TWP,"C>WPP");
+AddColumn(C<WPP AND C < TWP,"C<WPP");
+AddColumn(C>MPP AND C > TMP,"C>MPP");
+AddColumn(C<MPP AND C < TMP, "C<TMP");
+
+
+
+//FOR INSIDE VALUE PIVOT FILTER, INSIDE DAY AND 1DAY PIVOT CLOSE TO 2DAY PIVOT.
+//Filter = (IV OR ID OR abs((tp-ttp)*100/Min(tp,ttp))< 0.001) AND TimeNum() == 152500; 
+AddColumn(C,"CMP",1.2);
+AddColumn(IV,"Inside value pivot", 1.2);
+AddColumn(ID,"Inside Day pattern",1.2);
+AddColumn(abs((tp-ttp)*100/Min(tp,ttp))< 0.001,"1D2D",1.2);
+AddColumn(abs((tp-ttp)*100/Min(tp,ttp)),"1D-2D",1.2);
+
+
+// GPZ CROSS IDENTIFICATION FOR NEXT DAY
+
+Tgpzu = (Tcmh3 < Tdprup AND Tcmh3 > Tdprdn);
+Tgpzd = Tcml3 <Tdprup AND Tcml3 > Tdprdn;
+//Filter = (TGPZU OR TGPZD) AND TimeNum() == 152500;
+AddColumn(C,"CMP",1.2);
+AddColumn(TGPZU,"GPZ_CamH3_Cpr",1.2);
+AddColumn(TGPZd,"GPZ_CamL3_Cpr",1.2);
+
+
+// DAILY - WEEKLY CONFLUENCE IF RUNNING AFTER FRIDAY
+
+DW = abs ((TP - TWP)/Min(tp,twp)) < 0.001;
+WM = abs ((TP - MPP)/Min(tp,MpP)) < 0.001;
+
+//Filter = (DW OR WM) AND TimeNum() == 152500;
+AddColumn(C,"CMP",1.2);
+AddColumn(DW,"DLY_WKLY",1.2);
+AddColumn(WM,"WKLY_MNTHLY",1.2);
+AddColumn(TP,"Tom's Pivot",1.2);
+AddColumn(TWP,"Tom's Wkly pivot",1.2);
+AddColumn(MPP,"Tom's MNTHLY pivot",1.2);
+AddColumn((abs(tp-twp)/Min(tp,twp)),"tpp-twp",1.4);
+AddColumn((abs(tWp-MPp)/Min(tWp,MPp)),"tpp-twp",1.4);
+
+// DAILY - WEEKLY CONFLUENCE IF RUNNING during weekdays
+
+DW2 = abs ((TP - WPP)/Min(tp,wpP)) < 0.005;
+DM2 = abs ((TP - MPP)/Min(tp,MpP)) < 0.005;
+WM2 = abs ((WPP - MPP)/Min(WpP,MpP)) < 0.005;
+
+
+Filter = (DW2 OR WM2 OR DM2) AND TimeNum() == 152500;
+AddtextColumn(Name(),"Name");
+AddColumn(C,"CMP",1.2);
+AddColumn(DW2,"DLY_WKLY",1.2);
+AddColumn(DM2,"DLY_MNTHLY",1.2);
+AddColumn(WM2,"WKLY_MNTHLY",1.2);
+AddColumn(dM2+wm2+dw2,"d_w_m",1.2);
+
+
+AddColumn(TP,"Tom's Pivot",1.2);
+AddColumn(WPP,"Tom's Wkly pivot",1.2);
+AddColumn(MPP,"Tom's MNTHLY pivot",1.2);
+AddColumn((abs(tp-WPp)/Min(tp,WPp)),"tp-WPp",1.4);
+AddColumn((abs(tWp-MPP)/Min(tWp,MPp)),"tWp-MPp",1.4);
+AddColumn((abs(tp-MPP)/Min(tp,MPp)),"tp-MPp",1.4);
+
+
+
+
+//abs((tp-ttp)*100/Min(tp,ttp))< 0.1 AND TimeNum() == 152500 OR (IV OR id OR BPVT OR RPVT) ) AND TimeNum() == 152500;
+
+
+//Filter = prwd <0.65*(EMA(prwd,1200)) AND (th1-tl1)*100/tl1 < 1.5 AND TimeNum() == 150000; //GPUP OR GPDN;
+//BCROSS = Cross(L,R1) AND L > H1 AND TimeNum() < 095000;
+//RCROSS = Cross(S1,H) AND H < S1 AND TimeNum() < 095000;
+//Filter = BCROSS OR RCROSS;
+
+//AddColumn(IV,"IV",1.2);
+//AddColumn(Buy,"Buy",1);
+//AddColumn(Short,"Short",1);
+//AddColumn(pr,"pivot width % prev days",1.4);
+//AddColumn(0.65*(EMA(prwd,1200)),"065 pw threshold",1.4);
+//AddColumn(pr2 / (0.65*(EMA(prwd,1200))),"ratio",1.4);
+//AddColumn(id,"ID",1.4);
+
+
+//AddColumn(tp,"tom dp");
+//AddColumn(ttp,"tom 2dp");
+//AddColumn(tp_ttp,"tp_ttp");
+
+//AddColumn(GPUP, "GPUP",1);
+//AddColumn(GPDN,"GPDN",1);
+//AddColumn(BCROSS,"BREAKOUT",1.2);
+//AddColumn(RCROSS,"BREAKDOWN",1.2);
+_SECTION_END();
