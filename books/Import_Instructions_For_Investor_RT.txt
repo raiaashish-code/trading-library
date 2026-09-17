@@ -1,0 +1,1 @@
+Import Instructions: Download the .zip file and locate the Restore Point database file (.dba). Open Investor/RT and navigate to File > Function > Revert to Restore Point; replace with downloaded .dba file.
