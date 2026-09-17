@@ -1,0 +1,61 @@
+
+
+// running pivots
+
+_SECTION_BEGIN("10_DEVELOPING FLOOR PIVOTS");
+STARTTIME = 091500;
+tn = TimeNum();
+STARTBAR = TN == STARTTIME;
+TRRH1 = HighestSince(STARTBAR,High);
+TRRL1 = LOWESTSince(STARTBAR,LOW);
+TRRC1 = C;
+TRRP = ( TRRH1+ TRRL1 + TRRC1 )/3;
+TRRBC = (TRRH1+TRRL1)/2;
+TRRTC = (TRRP-TRRBC)+TRRP;
+_SECTION_END();
+
+
+// pema oscillator
+
+_SECTION_BEGIN("PBOSC_LTF");
+pema_lp = Param( "PEMA_L", 8,2, 89, 1 );
+pema_mp = Param( "PEMA_M", 13,2, 89, 1 );
+pema_hp = Param( "PEMA_H", 21,2, 89, 1 );
+
+FH = trrh1; //TimeFrameGetPrice("H", in5Minute,0);
+FL = trrl1; //TimeFrameGetPrice("L", in5Minute,0);
+FC = trrc1; //TimeFrameGetPrice("C", in5Minute,0);
+
+PEMA_L = EMA((FH+FL+FC)/3,PEMA_LP);
+PEMA_M = EMA((FH+FL+FC)/3,PEMA_MP);
+PEMA_H = EMA((FH+FL+FC)/3,PEMA_HP);
+DIFF1 = PEMA_L - PEMA_H;
+DIFF2 = PEMA_M - PEMA_H;
+DIFF3 = PEMA_L - PEMA_M;
+PBOSC = (DIFF1 + DIFF2 + DIFF3 ) / ((FH+FL+FC)/3) ;
+_SECTION_END();
+
+
+
+PBOSCCOLOR = IIf(PBOSC < Ref(PBOSC,-1),colorRed,colorYellow);
+Plot(PBOSC, "PBOSCILLATOR",PBOSCCOLOR,styleHistogram|styleThick);
+Plot(PBOSC, "PBOSCILLATOR",PBOSCCOLOR,styleLine);
+Plot(0, "",colorYellow,styleLINE);
+//Plot(0.0050, "",colorYellow,styleDashed);
+//Plot(-0.0050, "",colorYellow,styleDashed);
+
+
+
+// TITLE DISPLAY
+
+Title = EncodeColor(colorWhite)+  " - " +  Name() + " - " + EncodeColor(colorRed)+ Interval(2) + EncodeColor(colorWhite) + "LTF_PBOSC :" +PBOSC*100 ;
+
+
+Buy = Cross(0,PBOSC);
+Short = Cross(PBOSC,0);
+Sell = Short;
+Cover = Buy;
+Buy = ExRem(Buy,Sell);
+Short = ExRem(Short,Cover);
+Sell = ExRem(Sell,Buy);
+Cover = ExRem(Cover,Short);
