@@ -1,0 +1,139 @@
+
+_SECTION_BEGIN("CAMARILLA");
+H1 = TimeFrameGetPrice("H", inDaily, 0);		// yesterdays high
+L1 = TimeFrameGetPrice("L", inDaily, 0);		//				low
+C1= TimeFrameGetPrice("C", inDaily, 0);		//				close
+DayO = TimeFrameGetPrice("O", inDaily);		// current day open
+CMRNG = H1-L1;
+CMH1 = (C1 + CMRNG * (1.1/12));
+CMH2 = (C1 + CMRNG * (1.1/6));
+CMH3 = (C1 + CMRNG * (1.1/4));
+CMH4 = (C1 + CMRNG * (1.1/2));
+CMH5 = (H1/L1)*C1;
+CML1 = (C1 - CMRNG * (1.1/12));
+CML2 = (C1 - CMRNG * (1.1/6));
+CML3 = (C1 - CMRNG * (1.1/4));
+CML4 = (C1 - CMRNG * (1.1/2));
+CML5 = C1-(CMH5-C1);
+CAMPVTWIDTH = (CMH3-CML3)*100/CML3;
+_SECTION_END();
+
+// PIVOTBOSS PIVOT WIDTH FOR NEXT DAY based on current day end prices
+_SECTION_BEGIN("PIVOTBOSS");
+Pp = ( H1+ L1 + C1 )/3;
+BC = (H1+L1)/2;
+TC = (Pp-BC)+Pp;
+PR = IIf(BC>TC,(BC-TC)*100/TC,(TC-BC)*100/BC);
+MAXP = Max(BC,TC);
+MINP = Min(BC,TC);
+TR1 = 2 * PP - L1;
+TS1 = 2 * PP - H1;
+_SECTION_END();
+
+
+// PIVOTBOSS PIVOT WIDTH FOR NEXT DAY based on current day end and prev day prices
+
+_SECTION_BEGIN("PIVOTBOSS 2 day");
+PPDH = TimeFrameGetPrice("H",inDaily,-1);
+PPDL = TimeFrameGetPrice("L",inDaily,-1);
+TDH = Max(PPDH,H1);
+TDL = Min(PPDL,L1);
+TDPp = ( TDH+TDL + C1 )/3;
+TDBC = (TDH+TDL)/2;
+TDTC = (TDPp-TDBC)+TDPp;
+TDPR = IIf(TDBC>TDTC,(TDBC-TDTC)*100/TDTC,(TDTC-TDBC)*100/TDBC);
+TDDPRUP = IIf(TDBC>TDTC,TDBC,TDTC);
+TDDPRDN = IIf(TDBC<TDTC,TDBC,TDTC);
+_SECTION_END();
+
+
+
+
+// PIVOTBOSS PIVOT WIDTH FOR NEXT DAY based on current day end and prev day prices AND PREV TO PREV DAY
+
+_SECTION_BEGIN("PIVOTBOSS 3 day");
+PPPDH = TimeFrameGetPrice("H",inDaily,-2);
+PPPDL = TimeFrameGetPrice("L",inDaily,-2);
+TTDH = Max(PPPDH,H1);
+TTDL = Min(PPPDL,L1);
+TTDPp = ( TTDH+TTDL + C1 )/3;
+TTDBC = (TTDH+TTDL)/2;
+TTDTC = (TTDPp-TTDBC)+TTDPp;
+TTDPR = IIf(TTDBC>TTDTC,(TTDBC-TTDTC)*100/TTDTC,(TTDTC-TTDBC)*100/TTDBC);
+TTDDPRUP = IIf(TTDBC>TTDTC,TTDBC,TTDTC);
+TTDDPRDN = IIf(TTDBC<TTDTC,TTDBC,TTDTC);
+_SECTION_END();
+
+// PLOTTING CM PIVOTS
+
+_SECTION_BEGIN("PLOTS");
+PWIDTH = ParamList( "PIVOT WIDTH NEXT DAY", "PIVOTBOSS1DAY|CAMARILLA1DAY|PIVOTBOSS2DAY|PIVOTBOSS3DAY",0 );
+PCOLOR = IIf(PR <=0.25, colorRed,colorGreen);
+CCOLOR = IIf(CAMPVTWIDTH <=0.25,colorRed, colorGreen);
+if (PWIDTH == "CAMARILLA1DAY")
+{
+Plot(CAMPVTWIDTH,"CAM_PVT_WIDTH FOR NEXT TRADING DAY",cCOLOR,styleArea);
+}
+if (PWIDTH == "PIVOTBOSS1DAY")
+{
+Plot(PR,"PIVOTBOSS PVT_WIDTH FOR NEXT TRADING DAY", pCOLOR,styleArea);
+
+}
+if (PWIDTH == "PIVOTBOSS2DAY")
+{
+Plot(TDPR,"PIVOTBOSS PVT_WIDTH FOR NEXT TRADING DAY", pCOLOR,styleArea);
+
+}
+if (PWIDTH == "PIVOTBOSS3DAY")
+{
+Plot(TTDPR,"PIVOTBOSS PVT_WIDTH FOR NEXT TRADING DAY", pCOLOR,styleArea);
+
+}
+
+//Plot(0.5,"",colorWhite,styleThick);
+//Plot(0.25,"",colorWhite,styleThick);
+//Plot(0.75,"",colorWhite,styleThick);
+//Plot(0,"",colorBlue,styleDashed);
+//Plot(1,"",colorBlue,styleDashed);
+Plot(EMA(PR,1200),"20 dys Avg",colorYellow,styleDashed);
+Plot(0.65*EMA(pr,1200), "65% threshold", colorBlue,styleDots | styleThick, zorder= 1);
+Plot(1.25* EMA(pr,1200), "125% threshold", colorBlue,styleDots | styleThick, zorder = 1);
+_SECTION_END();
+
+
+
+_SECTION_BEGIN("IV");
+pH1 = TimeFrameGetPrice("H", inDaily, -1);		// yesterdays high
+pL1 = TimeFrameGetPrice("L", inDaily, -1);		//				low
+pC1= TimeFrameGetPrice("C", inDaily, -1);		//				close
+pDayO = TimeFrameGetPrice("O", inDaily,-1);		// current day open
+pPp = ( pH1+ pL1 + pC1 )/3;
+pBC = (pH1+pL1)/2;
+pTC = (pPp-pBC)+pPp;
+pPR = IIf(pBC>pTC,(pBC-pTC)*100/pTC,(pTC-pBC)*100/pBC);
+PMAXP = Max(PBC,PTC);
+PMINP = Min(PBC,PTC);
+IV = MAXP<PMAXP AND MINP>PMINP;
+
+
+Filter = (PR <= 0.65*EMA(pr,1200) OR IV OR TDPR <= 0.65*EMA(TDPR,1200)) AND TimeNum() == 152500 and C > 50;
+HT = TimeFrameGetPrice("H", inDaily, 0);		// DAYS high
+LT = TimeFrameGetPrice("L", inDaily, 0);		//				low
+CT= TimeFrameGetPrice("C", inDaily, 0);		//				close
+
+AddColumn(C,"Close",FORMAT=1.2);
+AddColumn(PR,"PREV DAY CPR WIDTH",FORMAT = 1.3);
+AddColumn(pr/EMA(pr,1200),"pr/emapr");
+AddColumn(TDPR,"LAST 2 DAYS CPRW", FORMAT = 1.3);
+AddColumn(TDPR/EMA(TDPR,1200),"TDPR/EMATDPR");
+AddColumn(TTDPR,"LAST 3 DAYS CPRW", FORMAT = 1.3);
+AddColumn(TTDPR/EMA(TTDPR,1200),"TDPR/EMATDPR");
+AddColumn(IV,"IV");
+AddColumn(CAMPVTWIDTH,"CAM_WIDTH", FORMAT = 1.3);
+AddColumn(campvtwidth/EMA(campvtwidth,1200),"cam/emacam");
+AddColumn((HT-LT)*100/LT,"DAY'S RANGE", FORMAT = 1.3);
+AddColumn(Max(H1,TR1),"LONG ABOVE");
+AddColumn(Min(L1,TS1),"SHORT BELOW");
+AddColumn(PR+campvtwidth+(HT-LT)*100/LT+TDPR+ttdpr,"rnk");
+AddTextColumn( FullName(), "INSIDE VALUE PIVOT", 77 , colorDefault, IIf( IV, colorLightBlue, colorDefault ) );
+_SECTION_END();
